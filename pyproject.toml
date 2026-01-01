@@ -22,15 +22,15 @@ dependencies = [
 # --------------------
 # Optional dependencies
 # --------------------
-[project.optional-dependencies]
-dev = [
-    "pytest",
-    "ruff",
-    "mypy",
-    "types-requests",  # może wylecieć później, jak migracja do httpx będzie complete
-    "commitizen",
-    "python-dotenv",   # tylko testy / example_minimal
-]
+# [project.optional-dependencies]
+# dev = [
+#     "pytest",
+#     "ruff",
+#     "mypy",
+#     "types-requests",  # może wylecieć później, jak migracja do httpx będzie complete
+#     "commitizen",
+#     "python-dotenv",   # tylko testy / example_minimal
+# ]
 
 # --------------------
 # Commitizen
@@ -94,7 +94,13 @@ build-backend = "setuptools.build_meta"
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.5.1",
     "pydantic-settings>=2.12.0",
+    "pytest",
+    "ruff",
+    "mypy",
+    "commitizen",
+    "python-dotenv",   # tylko testy / example_minimal
 ]
 
 [tool.setuptools.package-data]
