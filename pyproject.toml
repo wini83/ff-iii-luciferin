@@ -2,58 +2,54 @@
 name = "fireflyiii-enricher-core"
 version = "0.7.0"
 description = "A core library for enriching Firefly III transactions"
-authors = [{ name = "wini83", email = "rico.gotti@gmail.com" }]
+authors = [{ name = "wini83", email = "rico.gotti210@gmail.com" }]
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent"
+    "Programming Language :: Python :: Python :: 3",
+    "Operating System :: OS Independent",
 ]
 
+# --------------------
+# Runtime dependencies
+# --------------------
 dependencies = [
-    "requests",
-    "python-dotenv"
+    "httpx",
 ]
 
+# --------------------
+# Optional dependencies
+# --------------------
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "black",
-    "isort",
     "ruff",
     "mypy",
-    "types-requests",
-    "commitizen"
+    "types-requests",  # może wylecieć później, jak migracja do httpx będzie complete
+    "commitizen",
+    "python-dotenv",   # tylko testy / example_minimal
 ]
 
+# --------------------
+# Commitizen
+# --------------------
 [tool.commitizen]
 name = "cz_conventional_commits"
 version = "0.7.0"
 tag_format = "v$version"
 version_files = ["pyproject.toml"]
 update_changelog_on_bump = true
+annotated_tags = true
 
-[tool.black]
-line-length = 88
-target-version = ["py311"]
-skip-string-normalization = true
-
-[tool.isort]
-profile = "black"
-line_length = 88
-
-[tool.mypy]
-python_version = "3.11"
-strict = true
-ignore_missing_imports = true
-exclude = ["build"]
-
+# --------------------
+# Ruff (lint + format + isort replacement)
+# --------------------
 [tool.ruff]
 line-length = 88
-target-version = "py311"
-lint.select = ["E", "F", "I", "N"]
+target-version = "py312"
+
 exclude = [
     ".git",
     ".venv",
@@ -62,6 +58,36 @@ exclude = [
     "dist",
 ]
 
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "N",
+]
+
+ignore = [
+    "N818",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# --------------------
+# MyPy
+# --------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+exclude = ["build"]
+
+# --------------------
+# Build backend
+# --------------------
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
