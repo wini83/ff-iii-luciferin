@@ -1,27 +1,19 @@
-# pylint: disable=duplicate-code
-"""Demonstrate minimal usage of :class:`FireflyClient`. editing notes"""
+"""Demonstrate minimal usage of :class:`FireflyClient`. editing category"""
 
 import asyncio
 import json
-import os
+import logging
 
-from dotenv import load_dotenv
+from settings_min import settings
 
 from fireflyiii_enricher_core.firefly_client import FireflyClient
 
-# Load environment variables from .env.example file
-load_dotenv()
-
-FIREFLY_URL = os.getenv("FIREFLY_URL")
-FIREFLY_TOKEN = os.getenv("FIREFLY_TOKEN")
-
-if FIREFLY_URL is None or FIREFLY_TOKEN is None:
-    raise RuntimeError("Missing FIREFLY_URL or FIREFLY_TOKEN in environment.")
+logging.basicConfig(level=logging.INFO)
 
 
 async def main() -> None:
     # Initialize Firefly III client with credentials
-    firefly = FireflyClient(base_url=FIREFLY_URL, token=FIREFLY_TOKEN)
+    firefly = FireflyClient(base_url=settings.firefly_url, token=settings.firefly_token)
     try:
         tx_id = 4080
         response = await firefly.assign_transaction_category(tx_id, new_category_id=2)

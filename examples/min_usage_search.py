@@ -1,57 +1,45 @@
-# pylint: disable=duplicate-code
 """Demonstrate minimal usage of :class:`FireflyClient`."""
 
 import asyncio
-import os
+import logging
 
-from dotenv import load_dotenv
+from settings_min import settings
 
 from fireflyiii_enricher_core.firefly_client import (
     FireflyClient,
+    filter_by_description,
     filter_single_part,
     filter_without_category,
     filter_without_tag,
     simplify_transactions,
 )
 
-# Load environment variables from .env.example file
-load_dotenv()
-
-FIREFLY_URL = os.getenv("FIREFLY_URL")
-FIREFLY_TOKEN = os.getenv("FIREFLY_TOKEN")
-
-if FIREFLY_URL is None or FIREFLY_TOKEN is None:
-    raise RuntimeError("Missing FIREFLY_URL or FIREFLY_TOKEN in environment.")
+logging.basicConfig(level=logging.INFO)
 
 
 async def main() -> None:
     # Initialize Firefly III client with credentials
-    firefly = FireflyClient(base_url=FIREFLY_URL, token=FIREFLY_TOKEN)
+    firefly = FireflyClient(base_url=settings.firefly_url, token=settings.firefly_token)
     try:
         # Fetch, filter and simplify transactions
+        logging.info("Fetching transactions from Firefly III")
         transactions = await firefly.fetch_transactions()
+        logging.info("Filtering transactions")
         transactions = filter_single_part(transactions)
         transactions = filter_without_category(transactions)
-        # transactions = filter_by_description(
-        # transactions, "allegro", exact_match=False)
+        transactions = filter_by_description(transactions, "allegro", exact_match=False)
         allegro_amount = len(transactions)
         transactions = filter_without_tag(transactions, "allegro_done")
         simplified = simplify_transactions(transactions)
+        logging.info(
+            f"Transaction allegro: {allegro_amount} - not processed {len(simplified)}"
+        )
+        logging.info("Fetching categories from Firefly III")
 
         categories = await firefly.fetch_categories(simplified=True)
 
-        print(categories)
+        logging.info(f"Fetched {len(categories)} categories")
 
-        print(
-            f"Transaction allegro: {allegro_amount} - not processed {len(transactions)}"
-        )
-
-        # Display matching transactions
-        for tx in simplified:
-            print(
-                f"{tx.id}: {tx.date} | {tx.amount} | "
-                f"{tx.description} |{tx.tags} | |{tx.notes}"
-            )
     finally:
         await firefly.close()
 

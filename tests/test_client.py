@@ -6,7 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from fireflyiii_enricher_core.firefly_client import FireflyAPIError, FireflyClient
+from fireflyiii_enricher_core.firefly_client import (
+    FireflyAPIError,
+    FireflyClient,
+    SimplifiedCategory,
+)
 
 BASE_URL = "https://demo.firefly.local"
 TOKEN = "test-token"
@@ -49,7 +53,7 @@ def test_fetch_categories(mock_request: MagicMock) -> None:
         MockResponse({"data": [{"id": "3"}], "links": {"next": None}}),
     ]
 
-    async def run() -> list[dict[str, Any]]:
+    async def run() -> list[dict[str, Any]] | list[SimplifiedCategory]:
         client = FireflyClient(BASE_URL, TOKEN)
         try:
             return await client.fetch_categories()
