@@ -1,6 +1,7 @@
 # pylint: disable=duplicate-code
 """Demonstrate minimal usage of :class:`FireflyClient`. editing notes"""
 
+import asyncio
 import json
 import os
 
@@ -17,9 +18,18 @@ FIREFLY_TOKEN = os.getenv("FIREFLY_TOKEN")
 if FIREFLY_URL is None or FIREFLY_TOKEN is None:
     raise RuntimeError("Missing FIREFLY_URL or FIREFLY_TOKEN in environment.")
 
-# Initialize Firefly III client with credentials
-firefly = FireflyClient(base_url=FIREFLY_URL, token=FIREFLY_TOKEN)
 
-TX_ID = 3896
-response = firefly.update_transaction_notes(TX_ID, "Test notes#5\nTest notes#6")
-print(json.dumps(response, indent=2, ensure_ascii=False))
+async def main() -> None:
+    # Initialize Firefly III client with credentials
+    firefly = FireflyClient(base_url=FIREFLY_URL, token=FIREFLY_TOKEN)
+    try:
+        tx_id = 3896
+        response = await firefly.update_transaction_notes(
+            tx_id, "Test notes#5\nTest notes#6"
+        )
+        print(json.dumps(response, indent=2, ensure_ascii=False))
+    finally:
+        await firefly.close()
+
+
+asyncio.run(main())

@@ -21,8 +21,8 @@ pip install git+https://github.com/wini83/fireflyiii-enricher-core.git
 
 ## 🧰 Requirements
 
-- Python 3.8+
-- `requests`
+- Python 3.12+
+- `httpx`
 - `python-dotenv` (optional, for loading environment variables from `.env`)
 
 ## ⚙️ Usage
@@ -38,34 +38,42 @@ FIREFLY_TOKEN=your_access_token
 ### Minimal Example
 
 ```python
-from fireflyiii_enricher_core.firefly_client import FireflyClient
+import asyncio
 import os
+
 from dotenv import load_dotenv
+
+from fireflyiii_enricher_core.firefly_client import FireflyClient
 
 load_dotenv()
 
-client = FireflyClient(
-    base_url=os.getenv("FIREFLY_URL"),
-    token=os.getenv("FIREFLY_TOKEN")
-)
+async def main() -> None:
+    client = FireflyClient(
+        base_url=os.getenv("FIREFLY_URL"),
+        token=os.getenv("FIREFLY_TOKEN")
+    )
+    try:
+        # Fetch latest withdrawals
+        transactions = await client.fetch_transactions()
 
-# Fetch latest withdrawals
-transactions = client.fetch_transactions()
+        # Fetch categories
+        categories = await client.fetch_categories()
 
-# Fetch categories
-categories = client.fetch_categories()
+        # Update description
+        await client.update_transaction_description(123, "New description")
 
-# Update description
-client.update_transaction_description(123, "New description")
+        # Update notes
+        await client.update_transaction_notes(123, "Some extra notes")
 
-# Update notes
-client.update_transaction_notes(123, "Some extra notes")
+        # Add a tag
+        await client.add_tag_to_transaction(123, "processed")
 
-# Add a tag
-client.add_tag_to_transaction(123, "processed")
+        # assign category
+        await client.assign_transaction_category(123, new_category_id=1)
+    finally:
+        await client.close()
 
-# assign category
-client.assign_transaction_category(123, new_category_id=1)
+asyncio.run(main())
 
 ```
 

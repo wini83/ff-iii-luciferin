@@ -5,10 +5,17 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Dict, List
 
-import requests
-from requests import HTTPError, RequestException, Timeout
+import httpx
 
 logger = logging.getLogger(__name__)
+
+
+class FireflyAPIError(RuntimeError):
+    """Raised when Firefly III API calls fail."""
+
+    def __init__(self, message: str, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 def filter_without_category(transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -65,7 +72,7 @@ def filter_without_tag(
     return filtered
 
 
-def simplify_transactions(transactions: List[Dict[str, Any]]) -> List['SimplifiedTx']:
+def simplify_transactions(transactions: List[Dict[str, Any]]) -> List["SimplifiedTx"]:
     """Convert the raw API response into a flat structure."""
     simplified = []
     for t in transactions:
@@ -122,7 +129,7 @@ class SimplifiedCategory:
     name: str
 
     @classmethod
-    def from_api_dict(cls, category_raw: dict[str, Any]) -> 'SimplifiedCategory':
+    def from_api_dict(cls, category_raw: dict[str, Any]) -> "SimplifiedCategory":
         """Create instance of SimplifiedCategory from raw api dict"""
         category_id = category_raw.get("id", "")
         attributes = category_raw.get("attributes", {})
@@ -141,28 +148,35 @@ class FireflyClient:
             "Accept": "application/vnd.api+json",
             "Content-Type": "application/vnd.api+json",
         }
+        self._client = httpx.AsyncClient(headers=self.headers, timeout=10.0)
 
-    def _safe_request(self, method: str, url: str, **kwargs: Any) -> Any:
+    async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
         try:
-            response = requests.request(
-                method, url, headers=self.headers, timeout=10, **kwargs
-            )
+            response = await self._client.request(method, url, **kwargs)
             response.raise_for_status()
             try:
                 return response.json()
             except ValueError as exc:
-                raise RuntimeError("Failed to parse JSON response") from exc
+                raise FireflyAPIError(
+                    "Failed to parse JSON response",
+                    status_code=response.status_code,
+                ) from exc
 
-        except Timeout as exc:
-            raise RuntimeError("Request timed out") from exc
-        except ConnectionError as exc:
-            raise RuntimeError("Connection failed") from exc
-        except HTTPError as exc:
-            raise RuntimeError(f"HTTP error: {exc}") from exc
-        except RequestException as exc:
-            raise RuntimeError(f"Request failed: {exc}") from exc
+        except httpx.TimeoutException as exc:
+            raise FireflyAPIError("Request timed out") from exc
+        except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            raise FireflyAPIError(
+                f"HTTP error: {exc}", status_code=status_code
+            ) from exc
+        except httpx.RequestError as exc:
+            raise FireflyAPIError(f"Request failed: {exc}") from exc
 
-    def fetch_transactions(
+    async def close(self) -> None:
+        """Close the underlying HTTP client."""
+        await self._client.aclose()
+
+    async def fetch_transactions(
         self,
         tx_type: str = "withdrawal",
         limit: int = 1000,
@@ -181,7 +195,7 @@ class FireflyClient:
 
         while True:
             params["page"] = page
-            response = self._safe_request("get", url, params=params)
+            response = await self._request("get", url, params=params)
             data = response
             transactions.extend(data["data"])
             if not data["links"].get("next"):
@@ -189,7 +203,7 @@ class FireflyClient:
             page += 1
         return transactions
 
-    def fetch_categories(
+    async def fetch_categories(
         self, limit: int = 1000, simplified: bool = False
     ) -> List[Dict[str, Any]] | List[SimplifiedCategory]:
         """
@@ -231,7 +245,7 @@ class FireflyClient:
 
         while True:
             params["page"] = page
-            response = self._safe_request("get", url, params=params)
+            response = await self._request("get", url, params=params)
             data = response
             categories.extend(data["data"])
             if not data["links"].get("next"):
@@ -244,12 +258,12 @@ class FireflyClient:
             result.append(SimplifiedCategory.from_api_dict(category))
         return result
 
-    def update_transaction_description(
+    async def update_transaction_description(
         self, transaction_id: int, new_description: str
     ) -> Any:
         """Change the description field for a given transaction."""
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
-        response = self._safe_request("get", url)
+        response = await self._request("get", url)
         old_desc = response.get("data", {}).get("attributes", {})
         old_desc = old_desc.get("transactions", [{}])[0].get("description", {})
         if new_description in old_desc:
@@ -259,13 +273,15 @@ class FireflyClient:
             "fire_webhooks": True,
             "transactions": [{"description": new_description}],
         }
-        response_put = self._safe_request("put", url, json=payload)
+        response_put = await self._request("put", url, json=payload)
         return response_put
 
-    def update_transaction_notes(self, transaction_id: int, new_notes: str) -> Any:
+    async def update_transaction_notes(
+        self, transaction_id: int, new_notes: str
+    ) -> Any:
         """Replace the notes for a given transaction."""
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
-        response = self._safe_request("get", url)
+        response = await self._request("get", url)
         old_notes = response.get("data", {}).get("attributes", {})
         old_notes = old_notes.get("transactions", [{}])[0].get("notes", "")
         old_notes = old_notes or ""
@@ -276,15 +292,15 @@ class FireflyClient:
             "fire_webhooks": True,
             "transactions": [{"notes": new_notes}],
         }
-        response = self._safe_request("put", url, json=payload)
+        response = await self._request("put", url, json=payload)
         return response
 
-    def assign_transaction_category(
+    async def assign_transaction_category(
         self, transaction_id: int, new_category_id: int
     ) -> Any:
         """Replace the notes for a given transaction."""
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
-        response = self._safe_request("get", url)
+        response = await self._request("get", url)
         attributes = response.get("data", {}).get("attributes", {})
         old_category = attributes.get("transactions", [{}])[0].get("category_id", "")
         if old_category is not None:
@@ -295,13 +311,13 @@ class FireflyClient:
             "fire_webhooks": True,
             "transactions": [{"category_id": str(new_category_id)}],
         }
-        response = self._safe_request("put", url, json=payload)
+        response = await self._request("put", url, json=payload)
         return response
 
-    def add_tag_to_transaction(self, transaction_id: int, new_tag: str) -> Any:
+    async def add_tag_to_transaction(self, transaction_id: int, new_tag: str) -> Any:
         """Attach a tag to the specified transaction."""
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
-        response = self._safe_request("get", url)
+        response = await self._request("get", url)
         existing_data = response
         old_sub_transactions = (
             existing_data.get("data", {}).get("attributes", {}).get("transactions", [])
@@ -317,5 +333,5 @@ class FireflyClient:
             "fire_webhooks": True,
             "transactions": [{"tags": tags}],
         }
-        self._safe_request("put", url, json=payload)
+        await self._request("put", url, json=payload)
         return response
