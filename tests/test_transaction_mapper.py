@@ -1,0 +1,86 @@
+from datetime import datetime
+
+import pytest
+
+from fireflyiii_enricher_core.api.openapi_types import (
+    TransactionTypeProperty,
+)
+from fireflyiii_enricher_core.mappers.transaction import map_transaction
+from fireflyiii_enricher_core.openapi.openapi_client.models.transaction import (
+    Transaction,
+)
+from fireflyiii_enricher_core.openapi.openapi_client.models.transaction_read import (
+    TransactionRead,
+)
+
+
+def make_transaction_read() -> TransactionRead:
+    split_dict = {
+        "type": TransactionTypeProperty.WITHDRAWAL,
+        "amount": "12.34",
+        "date": datetime(2025, 1, 1),
+        "description": "Test tx",
+        "source_id": "1",
+        "destination_id": "2",
+        "tags": ["test"],
+        "notes": "note",
+        "category_name": "Food",
+    }
+
+    tx = Transaction.model_validate(
+        {
+            "transactions": [split_dict],
+        }
+    )
+
+    return TransactionRead.model_validate(
+        {
+            "id": "123",
+            "type": "transactions",
+            "attributes": tx.model_dump(by_alias=True),  # 🔥 TO JEST FIX
+            "links": {},
+        }
+    )
+
+
+def test_map_transaction_single_split_happy_path() -> None:
+    tx = make_transaction_read()
+
+    result = map_transaction(tx)
+
+    assert result.id == "123"
+    assert result.description == "Test tx"
+    assert result.amount == 12.34
+    assert result.date.isoformat() == "2025-01-01"
+    assert result.tags == ["test"]
+    assert result.notes == "note"
+    assert result.category == "Food"
+
+
+def test_map_transaction_rejects_multi_split() -> None:
+    split_dict = {
+        "type": TransactionTypeProperty.WITHDRAWAL,
+        "amount": "10.00",
+        "date": datetime(2025, 1, 1),
+        "description": "Split",
+        "source_id": "1",
+        "destination_id": "2",
+    }
+
+    tx = Transaction.model_validate(
+        {
+            "transactions": [split_dict, split_dict],
+        }
+    )
+
+    tx_read = TransactionRead.model_validate(
+        {
+            "id": "999",
+            "type": "transactions",
+            "attributes": tx.model_dump(by_alias=True),  # 🔥 I TU
+            "links": {},
+        }
+    )
+
+    with pytest.raises(ValueError, match="single-part"):
+        map_transaction(tx_read)
