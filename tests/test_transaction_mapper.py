@@ -5,7 +5,7 @@ import pytest
 from fireflyiii_enricher_core.api.openapi_types import (
     TransactionTypeProperty,
 )
-from fireflyiii_enricher_core.mappers.transaction import map_transaction
+from fireflyiii_enricher_core.mappers.transaction_mapper import map_transaction
 from fireflyiii_enricher_core.openapi.openapi_client.models.transaction import (
     Transaction,
 )
