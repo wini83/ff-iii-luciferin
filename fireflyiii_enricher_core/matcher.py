@@ -2,7 +2,7 @@
 
 from typing import List
 
-from fireflyiii_enricher_core.firefly_client import SimplifiedItem, SimplifiedTx
+from fireflyiii_enricher_core.domain.models import SimplifiedItem, SimplifiedTx
 
 
 # pylint: disable=too-few-public-methods

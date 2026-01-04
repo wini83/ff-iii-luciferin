@@ -5,7 +5,7 @@ import logging
 
 from settings_min import settings
 
-from fireflyiii_enricher_core.firefly_client import (
+from fireflyiii_enricher_core.api import (
     FireflyClient,
     filter_by_description,
     filter_single_part,

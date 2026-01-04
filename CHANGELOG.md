@@ -1,3 +1,9 @@
+## Unreleased
+
+### Refactor
+
+- **api/client**: move Firefly client to API layer and return domain models only
+
 ## v0.7.0 (2025-11-16)
 
 ### Feat

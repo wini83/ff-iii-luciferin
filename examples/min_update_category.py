@@ -6,7 +6,7 @@ import logging
 
 from settings_min import settings
 
-from fireflyiii_enricher_core.firefly_client import FireflyClient
+from fireflyiii_enricher_core.api import FireflyClient
 
 logging.basicConfig(level=logging.INFO)
 

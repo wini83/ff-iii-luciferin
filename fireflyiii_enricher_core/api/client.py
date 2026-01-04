@@ -1,12 +1,23 @@
 """Utility client for interacting with the Firefly III API."""
 
 import logging
-from datetime import date, datetime
-from typing import Any, Dict, List
+from datetime import date
+from typing import Any, Iterable, List, Sequence
 
 import httpx
 
 from fireflyiii_enricher_core.domain.models import SimplifiedCategory, SimplifiedTx
+from fireflyiii_enricher_core.mappers.category_mapper import map_category
+from fireflyiii_enricher_core.mappers.transaction_mapper import map_transaction
+from fireflyiii_enricher_core.openapi.openapi_client.models.category_array import (
+    CategoryArray,
+)
+from fireflyiii_enricher_core.openapi.openapi_client.models.transaction_array import (
+    TransactionArray,
+)
+from fireflyiii_enricher_core.openapi.openapi_client.models.transaction_single import (
+    TransactionSingle,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,78 +30,53 @@ class FireflyAPIError(RuntimeError):
         self.status_code = status_code
 
 
-def filter_without_category(transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def filter_without_category(
+    transactions: Sequence[SimplifiedTx],
+) -> List[SimplifiedTx]:
     """Filter out transactions that already have a category set."""
-    return [
-        t
-        for t in transactions
-        if t["attributes"]["transactions"][0].get("category_id") is None
-    ]
+    return [tx for tx in transactions if not tx.category]
 
 
-def filter_single_part(transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def filter_single_part(transactions: Sequence[SimplifiedTx]) -> List[SimplifiedTx]:
     """Return only transactions that have a single sub-transaction."""
-    return [t for t in transactions if len(t["attributes"]["transactions"]) == 1]
+    return list(transactions)
 
 
 def filter_by_description(
-    transactions: List[Dict[str, Any]],
+    transactions: Sequence[SimplifiedTx],
     description_filter: str,
     exact_match: bool = True,
-) -> List[Dict[str, Any]]:
+) -> List[SimplifiedTx]:
     """Match transactions whose description matches the filter."""
-    filtered = []
-    for t in transactions:
-        desc = t["attributes"]["transactions"][0]["description"]
-        if exact_match and desc.lower() == description_filter.lower():
-            filtered.append(t)
-        elif not exact_match and description_filter.lower() in desc.lower():
-            filtered.append(t)
-    return filtered
-
-
-def filter_without_tag(
-    transactions: List[Dict[str, Any]], tag: str
-) -> List[Dict[str, Any]]:
-    """
-    Filters out transactions that contain a specific tag.
-
-    Iterates over a list of transaction dictionaries and returns only those
-    that do not include the given tag in their 'tags' field.
-
-    Args:
-        transactions (List[Dict[str, Any]]): List of transaction objects (dicts)
-        from Firefly.
-        tag (str): The tag to exclude from the results.
-
-    Returns:
-        List[Dict[str, Any]]: Filtered list of transactions without the specified tag.
-    """
-    filtered: List[Dict[str, Any]] = []
+    filtered: List[SimplifiedTx] = []
     for tx in transactions:
-        if tag not in tx["attributes"]["transactions"][0]["tags"]:
+        desc = tx.description
+        if exact_match and desc.lower() == description_filter.lower():
+            filtered.append(tx)
+        elif not exact_match and description_filter.lower() in desc.lower():
             filtered.append(tx)
     return filtered
 
 
-def simplify_transactions(transactions: List[Dict[str, Any]]) -> List["SimplifiedTx"]:
-    """Convert the raw API response into a flat structure."""
-    simplified = []
-    for t in transactions:
-        sub = t["attributes"]["transactions"][0]
-        tx_date = datetime.fromisoformat(sub["date"]).date()
-        simplified.append(
-            SimplifiedTx(
-                id=t["id"],
-                description=sub["description"],
-                amount=float(sub["amount"]),
-                date=tx_date,
-                tags=sub.get("tags", ""),
-                notes=sub.get("notes", ""),
-                category=sub.get("category", ""),
-            )
-        )
-    return simplified
+def filter_without_tag(
+    transactions: Sequence[SimplifiedTx], tag: str
+) -> List[SimplifiedTx]:
+    """
+    Filters out transactions that contain a specific tag.
+
+    Iterates over a list of transactions and returns only those
+    that do not include the given tag in their tags field.
+    """
+    filtered: List[SimplifiedTx] = []
+    for tx in transactions:
+        if tag not in tx.tags:
+            filtered.append(tx)
+    return filtered
+
+
+def simplify_transactions(transactions: Iterable[SimplifiedTx]) -> List[SimplifiedTx]:
+    """Return simplified transactions already expressed in the domain model."""
+    return list(transactions)
 
 
 class FireflyClient:
@@ -138,90 +124,62 @@ class FireflyClient:
         limit: int = 1000,
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[SimplifiedTx]:
         """Retrieve transactions of the given type."""
         url = f"{self.base_url}/api/v1/transactions"
-        params = {"limit": limit, "type": tx_type}
+        params: dict[str, Any] = {"limit": limit, "type": tx_type}
         if start_date:
             params["start"] = start_date.isoformat()
         if end_date:
             params["end"] = end_date.isoformat()
         page = 1
-        transactions: List[Dict[str, Any]] = []
+        transactions: List[SimplifiedTx] = []
 
         while True:
             params["page"] = page
             response = await self._request("get", url, params=params)
-            data = response
-            transactions.extend(data["data"])
-            if not data["links"].get("next"):
+            data = TransactionArray.model_validate(response)
+            for tx in data.data:
+                try:
+                    transactions.append(map_transaction(tx))
+                except ValueError as exc:
+                    logger.warning("Skipping transaction %s: %s", tx.id, exc)
+            if not data.links.next:
                 break
             page += 1
         return transactions
 
     async def fetch_categories(
         self, limit: int = 1000, simplified: bool = False
-    ) -> List[Dict[str, Any]] | List[SimplifiedCategory]:
-        """
-        Retrieve categories from Firefly III with optional simplification.
-
-        Fetches categories from Firefly III via paginated requests until all available
-        categories are retrieved or the specified limit is reached. Categories can be
-        returned either as raw dictionaries or simplified into instances of
-        `SimplifiedCategory`.
-
-        Args:
-            limit (int, optional): Maximum number of categories to retrieve.
-                                    Defaults to 1000.
-            simplified (bool, optional): Determines the format of the returned data.
-                                        If `True`,
-                                        returns a list of `SimplifiedCategory` instances
-                                        if `False`,
-                                        returns raw API data. Defaults to `False`.
-
-        Returns:
-            List[Dict[str, Any]] | List[SimplifiedCategory]: A list of category
-            data either in raw dictionary form or as simplified objects.
-
-        Examples:
-            client.fetch_categories(limit=50)
-            [{"id": "1", "attributes": {...}}, ...]
-
-            client.fetch_categories(simplified=True)
-            [SimplifiedCategory(id="1", name="Food"), ...]
-
-        Raises:
-            HTTPError: If the request to Firefly III fails.
-            KeyError: If the response data format is unexpected.
-        """
+    ) -> List[SimplifiedCategory]:
+        """Retrieve categories from Firefly III."""
         url = f"{self.base_url}/api/v1/categories"
-        params = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         page = 1
-        categories: List[Dict[str, Any]] = []
+        categories: List[SimplifiedCategory] = []
 
         while True:
             params["page"] = page
             response = await self._request("get", url, params=params)
-            data = response
-            categories.extend(data["data"])
-            if not data["links"].get("next"):
+            data = CategoryArray.model_validate(response)
+            categories.extend(map_category(category) for category in data.data)
+            pagination = data.meta.pagination
+            if pagination and pagination.current_page and pagination.total_pages:
+                if pagination.current_page >= pagination.total_pages:
+                    break
+            elif not response.get("links", {}).get("next"):
                 break
             page += 1
-        if not simplified:
-            return categories
-        result: List[SimplifiedCategory] = []
-        for category in categories:
-            result.append(SimplifiedCategory.from_api_dict(category))
-        return result
+        return categories
 
     async def update_transaction_description(
         self, transaction_id: int, new_description: str
-    ) -> Any:
+    ) -> SimplifiedTx:
         """Change the description field for a given transaction."""
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
         response = await self._request("get", url)
-        old_desc = response.get("data", {}).get("attributes", {})
-        old_desc = old_desc.get("transactions", [{}])[0].get("description", {})
+        existing = TransactionSingle.model_validate(response)
+        old_desc = existing.data.attributes.transactions[0].description
         if new_description in old_desc:
             raise RuntimeError("New data is identical to the current one.")
         payload = {
@@ -230,17 +188,17 @@ class FireflyClient:
             "transactions": [{"description": new_description}],
         }
         response_put = await self._request("put", url, json=payload)
-        return response_put
+        updated = TransactionSingle.model_validate(response_put)
+        return map_transaction(updated.data)
 
     async def update_transaction_notes(
         self, transaction_id: int, new_notes: str
-    ) -> Any:
+    ) -> SimplifiedTx:
         """Replace the notes for a given transaction."""
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
         response = await self._request("get", url)
-        old_notes = response.get("data", {}).get("attributes", {})
-        old_notes = old_notes.get("transactions", [{}])[0].get("notes", "")
-        old_notes = old_notes or ""
+        existing = TransactionSingle.model_validate(response)
+        old_notes = existing.data.attributes.transactions[0].notes or ""
         if new_notes in old_notes:
             raise RuntimeError("New data is identical to the current one.")
         payload = {
@@ -248,40 +206,41 @@ class FireflyClient:
             "fire_webhooks": True,
             "transactions": [{"notes": new_notes}],
         }
-        response = await self._request("put", url, json=payload)
-        return response
+        response_put = await self._request("put", url, json=payload)
+        updated = TransactionSingle.model_validate(response_put)
+        return map_transaction(updated.data)
 
     async def assign_transaction_category(
         self, transaction_id: int, new_category_id: int
-    ) -> Any:
-        """Replace the notes for a given transaction."""
+    ) -> SimplifiedTx:
+        """Assign a category to the specified transaction."""
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
         response = await self._request("get", url)
-        attributes = response.get("data", {}).get("attributes", {})
-        old_category = attributes.get("transactions", [{}])[0].get("category_id", "")
-        if old_category is not None:
-            if old_category == str(new_category_id):
-                raise RuntimeError("New data is identical to the current one.")
+        existing = TransactionSingle.model_validate(response)
+        old_category = existing.data.attributes.transactions[0].category_id
+        if old_category is not None and old_category == str(new_category_id):
+            raise RuntimeError("New data is identical to the current one.")
         payload = {
             "apply_rules": True,
             "fire_webhooks": True,
             "transactions": [{"category_id": str(new_category_id)}],
         }
-        response = await self._request("put", url, json=payload)
-        return response
+        response_put = await self._request("put", url, json=payload)
+        updated = TransactionSingle.model_validate(response_put)
+        return map_transaction(updated.data)
 
-    async def add_tag_to_transaction(self, transaction_id: int, new_tag: str) -> Any:
+    async def add_tag_to_transaction(
+        self, transaction_id: int, new_tag: str
+    ) -> SimplifiedTx:
         """Attach a tag to the specified transaction."""
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
         response = await self._request("get", url)
-        existing_data = response
-        old_sub_transactions = (
-            existing_data.get("data", {}).get("attributes", {}).get("transactions", [])
-        )
+        existing = TransactionSingle.model_validate(response)
+        old_sub_transactions = existing.data.attributes.transactions
         if len(old_sub_transactions) != 1:
             raise RuntimeError("Transaction is not single part")
         old_sub_tx = old_sub_transactions[0]
-        tags = old_sub_tx.get("tags", [])
+        tags = list(old_sub_tx.tags or [])
         if new_tag not in tags:
             tags.append(new_tag)
         payload = {
@@ -289,5 +248,6 @@ class FireflyClient:
             "fire_webhooks": True,
             "transactions": [{"tags": tags}],
         }
-        await self._request("put", url, json=payload)
-        return response
+        response_put = await self._request("put", url, json=payload)
+        updated = TransactionSingle.model_validate(response_put)
+        return map_transaction(updated.data)
