@@ -56,6 +56,7 @@ exclude = [
     "__pycache__",
     "build",
     "dist",
+    "fireflyiii_enricher_core/api"
 ]
 
 [tool.ruff.lint]
@@ -105,3 +106,11 @@ dev = [
 
 [tool.setuptools.package-data]
 "fireflyiii_enricher_core" = ["py.typed"]
+
+[tool.setuptools.packages.find]
+exclude = ["openapi*"]
+
+
+[tool.black]
+line-length = 88
+exclude = "fireflyiii_enricher_core/api"
