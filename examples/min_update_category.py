@@ -15,10 +15,14 @@ async def main() -> None:
     firefly = FireflyClient(base_url=settings.firefly_url, token=settings.firefly_token)
     try:
         tx_id = 4080
+        tx = await firefly.get_transaction(tx_id)
+        logging.info("Current category for %s: %s", tx.id, tx.category)
         response = await firefly.update_transaction(
             tx_id, TransactionUpdate(category_id=2)
         )
-        print(response)
+        logging.info(
+            "Updated transaction %s category: %s", response.id, response.category
+        )
     finally:
         await firefly.close()
 

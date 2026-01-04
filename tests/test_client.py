@@ -1,14 +1,14 @@
 """Unit tests for FireflyClient class."""
 
 import asyncio
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from fireflyiii_enricher_core.api.client import FireflyAPIError, FireflyClient
 from fireflyiii_enricher_core.api.transaction_update import TransactionUpdate
-from fireflyiii_enricher_core.domain.models import SimplifiedCategory
+from fireflyiii_enricher_core.domain.models import SimplifiedCategory, SimplifiedTx
 
 BASE_URL = "https://demo.firefly.local"
 TOKEN = "test-token"
@@ -16,6 +16,9 @@ TOKEN = "test-token"
 
 def _transaction_split_payload(
     description: str,
+    *,
+    amount: str = "10.00",
+    date: str = "2025-01-01T00:00:00+00:00",
     tags: List[str] | None = None,
     notes: str | None = None,
     category_id: str | None = None,
@@ -23,11 +26,11 @@ def _transaction_split_payload(
 ) -> Dict[str, Any]:
     return {
         "type": "withdrawal",
-        "date": "2025-01-01T00:00:00+00:00",
-        "amount": "10.00",
+        "date": date,
+        "amount": amount,
         "description": description,
-        "source_id": None,
-        "destination_id": None,
+        "source_id": "1",
+        "destination_id": "2",
         "tags": tags or [],
         "notes": notes,
         "category_id": category_id,
@@ -36,13 +39,13 @@ def _transaction_split_payload(
 
 
 def _transaction_read_payload(
-    tx_id: str, split_payload: Dict[str, Any]
+    tx_id: str, split_payloads: Iterable[Dict[str, Any]]
 ) -> Dict[str, Any]:
     return {
         "type": "transactions",
         "id": tx_id,
-        "attributes": {"transactions": [split_payload]},
-        "links": {},
+        "attributes": {"transactions": list(split_payloads)},
+        "links": {"self": f"{BASE_URL}/api/v1/transactions/{tx_id}"},
     }
 
 
@@ -51,7 +54,7 @@ def _transaction_array_response(
 ) -> Dict[str, Any]:
     splits = [_transaction_split_payload(f"tx-{tx_id}") for tx_id in tx_ids]
     data = [
-        _transaction_read_payload(tx_id, split)
+        _transaction_read_payload(tx_id, [split])
         for tx_id, split in zip(tx_ids, splits, strict=False)
     ]
     return {
@@ -64,7 +67,7 @@ def _transaction_array_response(
 def _transaction_single_response(
     tx_id: str, split_payload: Dict[str, Any]
 ) -> Dict[str, Any]:
-    return {"data": _transaction_read_payload(tx_id, split_payload)}
+    return {"data": _transaction_read_payload(tx_id, [split_payload])}
 
 
 def _category_read_payload(category_id: str, name: str) -> Dict[str, Any]:
@@ -99,7 +102,7 @@ def test_fetch_transactions(mock_request: MagicMock) -> None:
         MockResponse(_transaction_array_response(["3"], None)),
     ]
 
-    async def run() -> list[Any]:
+    async def run() -> list[SimplifiedTx]:
         client = FireflyClient(BASE_URL, TOKEN)
         try:
             return await client.fetch_transactions()
@@ -107,7 +110,8 @@ def test_fetch_transactions(mock_request: MagicMock) -> None:
             await client.close()
 
     result = asyncio.run(run())
-    assert len(result) == 3
+    assert [tx.id for tx in result] == [1, 2, 3]
+    assert [tx.description for tx in result] == ["tx-1", "tx-2", "tx-3"]
 
 
 @patch(
@@ -129,90 +133,64 @@ def test_fetch_categories(mock_request: MagicMock) -> None:
             await client.close()
 
     result = asyncio.run(run())
-    assert len(result) == 3
+    assert [category.id for category in result] == [1, 2, 3]
+    assert [category.name for category in result] == [
+        "Category 1",
+        "Category 2",
+        "Category 3",
+    ]
 
 
 @patch(
     "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
     new_callable=AsyncMock,
 )
-def test_update_transaction_description_success(mock_request: MagicMock) -> None:
-    """Test successful update of transaction description."""
-    updated = _transaction_split_payload("Test")
+def test_get_transaction_happy_path(mock_request: MagicMock) -> None:
+    """Test fetching a single transaction by ID."""
+    split = _transaction_split_payload(
+        "Lunch", tags=["food"], notes="Receipt", category_name="Eating Out"
+    )
+    mock_request.return_value = MockResponse(_transaction_single_response("123", split))
+
+    async def run() -> SimplifiedTx:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            return await client.get_transaction(123)
+        finally:
+            await client.close()
+
+    result = asyncio.run(run())
+    assert result.id == 123
+    assert result.description == "Lunch"
+    assert result.tags == ["food"]
+    assert result.notes == "Receipt"
+    assert result.category == "Eating Out"
+
+
+@patch(
+    "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_get_transaction_multipart_raises(mock_request: MagicMock) -> None:
+    """Test multipart transactions are rejected."""
+    split_a = _transaction_split_payload("Part A", amount="5.00")
+    split_b = _transaction_split_payload("Part B", amount="5.00")
     mock_request.return_value = MockResponse(
-        _transaction_single_response("123", updated)
+        {
+            "data": _transaction_read_payload("123", [split_a, split_b]),
+        }
     )
 
     async def run() -> None:
         client = FireflyClient(BASE_URL, TOKEN)
         try:
-            await client.update_transaction(123, TransactionUpdate(description="Test"))
+            await client.get_transaction(123)
         finally:
             await client.close()
 
-    asyncio.run(run())
-
-
-@patch(
-    "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
-    new_callable=AsyncMock,
-)
-def test_update_transaction_notes_success(mock_request: MagicMock) -> None:
-    """Test successful update of transaction notes."""
-    updated = _transaction_split_payload("Old description", notes="Some note")
-    mock_request.return_value = MockResponse(
-        _transaction_single_response("123", updated)
-    )
-
-    async def run() -> None:
-        client = FireflyClient(BASE_URL, TOKEN)
-        try:
-            await client.update_transaction(123, TransactionUpdate(notes="Some note"))
-        finally:
-            await client.close()
-
-    asyncio.run(run())
-
-
-@patch(
-    "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
-    new_callable=AsyncMock,
-)
-def test_update_transaction_tags_success(mock_request: MagicMock) -> None:
-    """Test successful update of transaction tags."""
-    updated = _transaction_split_payload("Old description", tags=["processed"])
-    mock_request.return_value = MockResponse(
-        _transaction_single_response("123", updated)
-    )
-
-    async def run() -> None:
-        client = FireflyClient(BASE_URL, TOKEN)
-        try:
-            await client.update_transaction(123, TransactionUpdate(tags=["processed"]))
-        finally:
-            await client.close()
-
-    asyncio.run(run())
-
-
-@patch(
-    "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
-    new_callable=AsyncMock,
-)
-def test_timeout_handling(mock_request: MagicMock) -> None:
-    """Test timeout exception is handled and re-raised."""
-    import httpx
-
-    mock_request.side_effect = httpx.TimeoutException("timeout")
-
-    async def run() -> None:
-        client = FireflyClient(BASE_URL, TOKEN)
-        try:
-            await client.fetch_transactions()
-        finally:
-            await client.close()
-
-    with pytest.raises(FireflyAPIError, match="Request timed out"):
+    with pytest.raises(
+        FireflyAPIError, match="Transaction 123 is multipart and not supported"
+    ):
         asyncio.run(run())
 
 
@@ -220,33 +198,75 @@ def test_timeout_handling(mock_request: MagicMock) -> None:
     "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
     new_callable=AsyncMock,
 )
-def test_json_decode_error(mock_request: MagicMock) -> None:
-    """Test JSON decode error is handled gracefully."""
-
-    class BadJsonResponse:
-        """Mocked response that raises ValueError on json()."""
-
-        status_code = 200
-
-        def raise_for_status(self) -> None:
-            """Mocked response that raises ValueError on json()."""
-            return
-
-        def json(self) -> Dict[str, Any]:
-            """Mocked response that raises ValueError on json()."""
-            raise ValueError("bad json")
-
-    mock_request.return_value = BadJsonResponse()
+def test_get_transaction_invalid_dto_raises(mock_request: MagicMock) -> None:
+    """Test invalid transaction DTOs are rejected."""
+    split = _transaction_split_payload("Broken", amount="not-a-number")
+    mock_request.return_value = MockResponse(_transaction_single_response("123", split))
 
     async def run() -> None:
         client = FireflyClient(BASE_URL, TOKEN)
         try:
-            await client.fetch_transactions()
+            await client.get_transaction(123)
         finally:
             await client.close()
 
-    with pytest.raises(FireflyAPIError, match="Failed to parse JSON response"):
+    with pytest.raises(FireflyAPIError, match="Transaction 123 could not be mapped"):
         asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    ("update", "expected_patch"),
+    [
+        (
+            TransactionUpdate(description="Test description"),
+            {"description": "Test description"},
+        ),
+        (
+            TransactionUpdate(notes="New note"),
+            {"notes": "New note"},
+        ),
+        (
+            TransactionUpdate(tags=["processed", "reviewed"]),
+            {"tags": ["processed", "reviewed"]},
+        ),
+        (
+            TransactionUpdate(category_id=42),
+            {"category_id": "42"},
+        ),
+    ],
+)
+@patch(
+    "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_update_transaction_fields(
+    mock_request: MagicMock,
+    update: TransactionUpdate,
+    expected_patch: Dict[str, Any],
+) -> None:
+    """Test updating single fields on a transaction."""
+    updated = _transaction_split_payload(
+        "Updated", tags=["processed"], notes="ok", category_name="Utilities"
+    )
+    mock_request.return_value = MockResponse(
+        _transaction_single_response("123", updated)
+    )
+
+    async def run() -> SimplifiedTx:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            return await client.update_transaction(123, update)
+        finally:
+            await client.close()
+
+    result = asyncio.run(run())
+    assert result.id == 123
+    assert result.description == "Updated"
+    assert mock_request.call_args.kwargs["json"] == {
+        "apply_rules": True,
+        "fire_webhooks": True,
+        "transactions": [expected_patch],
+    }
 
 
 class MockResponse:

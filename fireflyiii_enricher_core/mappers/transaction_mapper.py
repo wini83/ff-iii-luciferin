@@ -1,6 +1,8 @@
-from typing import Sequence
+from dataclasses import dataclass
+from typing import Literal, Sequence
 
 from fireflyiii_enricher_core.domain.models import SimplifiedTx
+from fireflyiii_enricher_core.mappers.utils import parse_decimal, parse_int
 from fireflyiii_enricher_core.openapi.openapi_client.models.transaction_read import (
     TransactionRead,
 )
@@ -9,22 +11,41 @@ from fireflyiii_enricher_core.openapi.openapi_client.models.transaction_split im
 )
 
 
-def map_transaction(tx: TransactionRead) -> SimplifiedTx:
+@dataclass(frozen=True)
+class TransactionMapResult:
+    tx: SimplifiedTx | None
+    reason: Literal["multipart", "invalid"] | None
+
+
+def map_transaction(tx: TransactionRead) -> TransactionMapResult:
     attrs = tx.attributes
     assert attrs is not None
 
     splits: Sequence[TransactionSplit] = attrs.transactions
     if len(splits) != 1:
-        raise ValueError("Only single-part transactions are supported")
+        return TransactionMapResult(tx=None, reason="multipart")
 
     split = splits[0]
 
-    return SimplifiedTx(
-        id=tx.id,
+    if split.var_date is None:
+        return TransactionMapResult(tx=None, reason="invalid")
+
+    id = parse_int(tx.id)
+    if id is None:
+        return TransactionMapResult(tx=None, reason="invalid")
+
+    amount = parse_decimal(split.amount)
+    if amount is None:
+        return TransactionMapResult(tx=None, reason="invalid")
+
+    simple_tx = SimplifiedTx(
+        id=id,
         description=split.description,
-        amount=float(split.amount),
+        amount=amount,
         date=split.var_date.date(),
         tags=list(split.tags or []),
         notes=split.notes or "",
         category=split.category_name or "",
     )
+
+    return TransactionMapResult(tx=simple_tx, reason=None)

@@ -1,4 +1,4 @@
-"""Demonstrate minimal usage of :class:`FireflyClient`."""
+"""Demonstrate minimal usage of :class:`FireflyClient`. fetching transactions."""
 
 import asyncio
 import logging
@@ -14,31 +14,10 @@ async def main() -> None:
     # Initialize Firefly III client with credentials
     firefly = FireflyClient(base_url=settings.firefly_url, token=settings.firefly_token)
     try:
-        # Fetch, filter and simplify transactions
-        logging.info("Fetching transactions from Firefly III")
         transactions = await firefly.fetch_transactions()
-        logging.info("Filtering transactions")
-        transactions = [tx for tx in transactions if not tx.category]
-        transactions = [
-            tx for tx in transactions if "allegro" in tx.description.lower()
-        ]
-        allegro_amount = len(transactions)
-        transactions = [tx for tx in transactions if "allegro_done" not in tx.tags]
-        simplified = list(transactions)
-        logging.info(
-            f"Transaction allegro: {allegro_amount} - not processed {len(simplified)}"
-        )
-        if len(simplified) > 0:
-            logging.info("Listing all unprocessed transactions:")
-            for tx in simplified:
-                logging.info(f" {tx.id} - {tx.date} {tx.description}  ({tx.amount}) ")
-            return
-        logging.info("Fetching categories from Firefly III")
-
-        categories = await firefly.fetch_categories(simplified=True)
-
-        logging.info(f"Fetched {len(categories)} categories")
-
+        logging.info("Fetched %s transactions", len(transactions))
+        for tx in transactions[:20]:
+            logging.info(f"TX {tx.id} - {tx.amount} - {tx.date} ; {tx.description}, ")
     finally:
         await firefly.close()
 

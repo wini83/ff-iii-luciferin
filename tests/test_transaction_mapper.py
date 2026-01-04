@@ -1,11 +1,13 @@
 from datetime import datetime
-
-import pytest
+from decimal import Decimal
 
 from fireflyiii_enricher_core.api.openapi_types import (
     TransactionTypeProperty,
 )
-from fireflyiii_enricher_core.mappers.transaction_mapper import map_transaction
+from fireflyiii_enricher_core.mappers.transaction_mapper import (
+    TransactionMapResult,
+    map_transaction,
+)
 from fireflyiii_enricher_core.openapi.openapi_client.models.transaction import (
     Transaction,
 )
@@ -48,13 +50,18 @@ def test_map_transaction_single_split_happy_path() -> None:
 
     result = map_transaction(tx)
 
-    assert result.id == "123"
-    assert result.description == "Test tx"
-    assert result.amount == 12.34
-    assert result.date.isoformat() == "2025-01-01"
-    assert result.tags == ["test"]
-    assert result.notes == "note"
-    assert result.category == "Food"
+    assert result == TransactionMapResult(
+        tx=result.tx,
+        reason=None,
+    )
+    assert result.tx is not None
+    assert result.tx.id == 123
+    assert result.tx.description == "Test tx"
+    assert result.tx.amount == Decimal("12.34")
+    assert result.tx.date.isoformat() == "2025-01-01"
+    assert result.tx.tags == ["test"]
+    assert result.tx.notes == "note"
+    assert result.tx.category == "Food"
 
 
 def test_map_transaction_rejects_multi_split() -> None:
@@ -82,5 +89,6 @@ def test_map_transaction_rejects_multi_split() -> None:
         }
     )
 
-    with pytest.raises(ValueError, match="single-part"):
-        map_transaction(tx_read)
+    result = map_transaction(tx_read)
+    assert result.tx is None
+    assert result.reason == "multipart"

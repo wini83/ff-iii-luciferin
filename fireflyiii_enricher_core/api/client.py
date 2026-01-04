@@ -2,33 +2,25 @@
 
 import logging
 from datetime import date
-from typing import Any, List
+from typing import Any, AsyncIterator, List
 
 import httpx
 
+from fireflyiii_enricher_core.api.errors import FireflyAPIError
 from fireflyiii_enricher_core.api.transaction_update import TransactionUpdate
+from fireflyiii_enricher_core.api.validators import (
+    validate_response_category_array,
+    validate_response_single_tx,
+    validate_response_transaction_array,
+)
 from fireflyiii_enricher_core.domain.models import SimplifiedCategory, SimplifiedTx
 from fireflyiii_enricher_core.mappers.category_mapper import map_category
-from fireflyiii_enricher_core.mappers.transaction_mapper import map_transaction
-from fireflyiii_enricher_core.openapi.openapi_client.models.category_array import (
-    CategoryArray,
-)
-from fireflyiii_enricher_core.openapi.openapi_client.models.transaction_array import (
-    TransactionArray,
-)
-from fireflyiii_enricher_core.openapi.openapi_client.models.transaction_single import (
-    TransactionSingle,
+from fireflyiii_enricher_core.mappers.transaction_mapper import (
+    TransactionMapResult,
+    map_transaction,
 )
 
 logger = logging.getLogger(__name__)
-
-
-class FireflyAPIError(RuntimeError):
-    """Raised when Firefly III API calls fail."""
-
-    def __init__(self, message: str, status_code: int | None = None) -> None:
-        super().__init__(message)
-        self.status_code = status_code
 
 
 class FireflyClient:
@@ -70,35 +62,85 @@ class FireflyClient:
         """Close the underlying HTTP client."""
         await self._client.aclose()
 
-    async def fetch_transactions(
+    async def _iter_transaction_map_results(
         self,
+        *,
         tx_type: str = "withdrawal",
-        limit: int = 1000,
+        page_size: int = 1000,
+        max_pages: int | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> List[SimplifiedTx]:
-        """Retrieve transactions of the given type."""
+    ) -> AsyncIterator[TransactionMapResult]:
+        """
+        Iterate over mapped transaction results (domain or rejection reason).
+
+        This is a low-level transport iterator:
+        - performs HTTP requests
+        - validates OpenAPI DTOs
+        - maps DTO -> domain via mapper
+        - yields TransactionMapResult
+        """
         url = f"{self.base_url}/api/v1/transactions"
-        params: dict[str, Any] = {"limit": limit, "type": tx_type}
+
+        params: dict[str, Any] = {
+            "limit": page_size,
+            "type": tx_type,
+        }
+
         if start_date:
             params["start"] = start_date.isoformat()
         if end_date:
             params["end"] = end_date.isoformat()
+
         page = 1
-        transactions: List[SimplifiedTx] = []
 
         while True:
+            if max_pages is not None and page > max_pages:
+                break
+
             params["page"] = page
+
             response = await self._request("get", url, params=params)
-            data = TransactionArray.model_validate(response)
-            for tx in data.data:
-                try:
-                    transactions.append(map_transaction(tx))
-                except ValueError as exc:
-                    logger.warning("Skipping transaction %s: %s", tx.id, exc)
+            data = validate_response_transaction_array(response)
+
+            for tx_dto in data.data:
+                yield map_transaction(tx_dto)
+
             if not data.links.next:
                 break
+
             page += 1
+
+    async def fetch_transactions(
+        self,
+        *,
+        tx_type: str = "withdrawal",
+        page_size: int = 1000,
+        max_pages: int | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list[SimplifiedTx]:
+        """
+        Fetch and return all successfully mapped transactions.
+
+        Rejected transactions (multipart / invalid) are silently skipped.
+        """
+        transactions: list[SimplifiedTx] = []
+
+        async for result in self._iter_transaction_map_results(
+            tx_type=tx_type,
+            page_size=page_size,
+            max_pages=max_pages,
+            start_date=start_date,
+            end_date=end_date,
+        ):
+            if result.tx is not None:
+                transactions.append(result.tx)
+            elif result.reason == "multipart":
+                logger.warning("Skipping multipart transaction")
+            else:
+                logger.error("Skipping invalid transaction")
+
         return transactions
 
     async def fetch_categories(
@@ -113,7 +155,7 @@ class FireflyClient:
         while True:
             params["page"] = page
             response = await self._request("get", url, params=params)
-            data = CategoryArray.model_validate(response)
+            data = validate_response_category_array(response)
             categories.extend(map_category(category) for category in data.data)
             pagination = data.meta.pagination
             if pagination and pagination.current_page and pagination.total_pages:
@@ -131,9 +173,7 @@ class FireflyClient:
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
 
         response = await self._request("get", url)
-        dto = TransactionSingle.model_validate(response)
-
-        return map_transaction(dto.data)
+        return validate_response_single_tx(response, transaction_id)
 
     async def update_transaction(
         self, transaction_id: int, update: TransactionUpdate
@@ -157,5 +197,4 @@ class FireflyClient:
             "transactions": [split_update],
         }
         response_put = await self._request("put", url, json=payload)
-        updated = TransactionSingle.model_validate(response_put)
-        return map_transaction(updated.data)
+        return validate_response_single_tx(response_put, transaction_id)
