@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from fireflyiii_enricher_core.api.client import FireflyAPIError, FireflyClient
+from fireflyiii_enricher_core.api.transaction_update import TransactionUpdate
 from fireflyiii_enricher_core.domain.models import SimplifiedCategory
 
 BASE_URL = "https://demo.firefly.local"
@@ -135,19 +136,17 @@ def test_fetch_categories(mock_request: MagicMock) -> None:
     "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
     new_callable=AsyncMock,
 )
-def test_update_description_success(mock_request: MagicMock) -> None:
+def test_update_transaction_description_success(mock_request: MagicMock) -> None:
     """Test successful update of transaction description."""
-    original = _transaction_split_payload("Old description")
     updated = _transaction_split_payload("Test")
-    mock_request.side_effect = [
-        MockResponse(_transaction_single_response("123", original)),
-        MockResponse(_transaction_single_response("123", updated)),
-    ]
+    mock_request.return_value = MockResponse(
+        _transaction_single_response("123", updated)
+    )
 
     async def run() -> None:
         client = FireflyClient(BASE_URL, TOKEN)
         try:
-            await client.update_transaction_description(123, "Test")
+            await client.update_transaction(123, TransactionUpdate(description="Test"))
         finally:
             await client.close()
 
@@ -160,17 +159,15 @@ def test_update_description_success(mock_request: MagicMock) -> None:
 )
 def test_update_transaction_notes_success(mock_request: MagicMock) -> None:
     """Test successful update of transaction notes."""
-    original = _transaction_split_payload("Old description", notes="Old note")
     updated = _transaction_split_payload("Old description", notes="Some note")
-    mock_request.side_effect = [
-        MockResponse(_transaction_single_response("123", original)),
-        MockResponse(_transaction_single_response("123", updated)),
-    ]
+    mock_request.return_value = MockResponse(
+        _transaction_single_response("123", updated)
+    )
 
     async def run() -> None:
         client = FireflyClient(BASE_URL, TOKEN)
         try:
-            await client.update_transaction_notes(123, "Some note")
+            await client.update_transaction(123, TransactionUpdate(notes="Some note"))
         finally:
             await client.close()
 
@@ -181,19 +178,17 @@ def test_update_transaction_notes_success(mock_request: MagicMock) -> None:
     "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
     new_callable=AsyncMock,
 )
-def test_add_tag_to_transaction(mock_request: MagicMock) -> None:
-    """Test successful adding of a tag to a transaction."""
-    original = _transaction_split_payload("Old description", tags=[])
+def test_update_transaction_tags_success(mock_request: MagicMock) -> None:
+    """Test successful update of transaction tags."""
     updated = _transaction_split_payload("Old description", tags=["processed"])
-    mock_request.side_effect = [
-        MockResponse(_transaction_single_response("123", original)),
-        MockResponse(_transaction_single_response("123", updated)),
-    ]
+    mock_request.return_value = MockResponse(
+        _transaction_single_response("123", updated)
+    )
 
     async def run() -> None:
         client = FireflyClient(BASE_URL, TOKEN)
         try:
-            await client.add_tag_to_transaction(123, "processed")
+            await client.update_transaction(123, TransactionUpdate(tags=["processed"]))
         finally:
             await client.close()
 

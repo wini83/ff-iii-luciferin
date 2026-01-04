@@ -1,12 +1,11 @@
 """Demonstrate minimal usage of :class:`FireflyClient`. editing description"""
 
 import asyncio
-import json
 import logging
 
 from settings_min import settings
 
-from fireflyiii_enricher_core.api import FireflyClient
+from fireflyiii_enricher_core.api import FireflyClient, TransactionUpdate
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,10 +16,10 @@ async def main() -> None:
     firefly = FireflyClient(base_url=settings.firefly_url, token=settings.firefly_token)
     try:
         tx_id = 4975  # Replace with your transaction ID
-        response = await firefly.update_transaction_description(
-            tx_id, "BLIK - płatność w internecie"
+        response = await firefly.update_transaction(
+            tx_id, TransactionUpdate(description="BLIK - płatność w internecie")
         )
-        print(json.dumps(response, indent=2, ensure_ascii=False))
+        print(response)
     finally:
         await firefly.close()
 

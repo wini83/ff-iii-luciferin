@@ -5,14 +5,7 @@ import logging
 
 from settings_min import settings
 
-from fireflyiii_enricher_core.api import (
-    FireflyClient,
-    filter_by_description,
-    filter_single_part,
-    filter_without_category,
-    filter_without_tag,
-    simplify_transactions,
-)
+from fireflyiii_enricher_core.api import FireflyClient
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,15 +18,21 @@ async def main() -> None:
         logging.info("Fetching transactions from Firefly III")
         transactions = await firefly.fetch_transactions()
         logging.info("Filtering transactions")
-        transactions = filter_single_part(transactions)
-        transactions = filter_without_category(transactions)
-        transactions = filter_by_description(transactions, "allegro", exact_match=False)
+        transactions = [tx for tx in transactions if not tx.category]
+        transactions = [
+            tx for tx in transactions if "allegro" in tx.description.lower()
+        ]
         allegro_amount = len(transactions)
-        transactions = filter_without_tag(transactions, "allegro_done")
-        simplified = simplify_transactions(transactions)
+        transactions = [tx for tx in transactions if "allegro_done" not in tx.tags]
+        simplified = list(transactions)
         logging.info(
             f"Transaction allegro: {allegro_amount} - not processed {len(simplified)}"
         )
+        if len(simplified) > 0:
+            logging.info("Listing all unprocessed transactions:")
+            for tx in simplified:
+                logging.info(f" {tx.id} - {tx.date} {tx.description}  ({tx.amount}) ")
+            return
         logging.info("Fetching categories from Firefly III")
 
         categories = await firefly.fetch_categories(simplified=True)

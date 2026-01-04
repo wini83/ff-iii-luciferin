@@ -2,10 +2,11 @@
 
 import logging
 from datetime import date
-from typing import Any, Iterable, List, Sequence
+from typing import Any, List
 
 import httpx
 
+from fireflyiii_enricher_core.api.transaction_update import TransactionUpdate
 from fireflyiii_enricher_core.domain.models import SimplifiedCategory, SimplifiedTx
 from fireflyiii_enricher_core.mappers.category_mapper import map_category
 from fireflyiii_enricher_core.mappers.transaction_mapper import map_transaction
@@ -28,55 +29,6 @@ class FireflyAPIError(RuntimeError):
     def __init__(self, message: str, status_code: int | None = None) -> None:
         super().__init__(message)
         self.status_code = status_code
-
-
-def filter_without_category(
-    transactions: Sequence[SimplifiedTx],
-) -> List[SimplifiedTx]:
-    """Filter out transactions that already have a category set."""
-    return [tx for tx in transactions if not tx.category]
-
-
-def filter_single_part(transactions: Sequence[SimplifiedTx]) -> List[SimplifiedTx]:
-    """Return only transactions that have a single sub-transaction."""
-    return list(transactions)
-
-
-def filter_by_description(
-    transactions: Sequence[SimplifiedTx],
-    description_filter: str,
-    exact_match: bool = True,
-) -> List[SimplifiedTx]:
-    """Match transactions whose description matches the filter."""
-    filtered: List[SimplifiedTx] = []
-    for tx in transactions:
-        desc = tx.description
-        if exact_match and desc.lower() == description_filter.lower():
-            filtered.append(tx)
-        elif not exact_match and description_filter.lower() in desc.lower():
-            filtered.append(tx)
-    return filtered
-
-
-def filter_without_tag(
-    transactions: Sequence[SimplifiedTx], tag: str
-) -> List[SimplifiedTx]:
-    """
-    Filters out transactions that contain a specific tag.
-
-    Iterates over a list of transactions and returns only those
-    that do not include the given tag in their tags field.
-    """
-    filtered: List[SimplifiedTx] = []
-    for tx in transactions:
-        if tag not in tx.tags:
-            filtered.append(tx)
-    return filtered
-
-
-def simplify_transactions(transactions: Iterable[SimplifiedTx]) -> List[SimplifiedTx]:
-    """Return simplified transactions already expressed in the domain model."""
-    return list(transactions)
 
 
 class FireflyClient:
@@ -172,81 +124,37 @@ class FireflyClient:
             page += 1
         return categories
 
-    async def update_transaction_description(
-        self, transaction_id: int, new_description: str
-    ) -> SimplifiedTx:
-        """Change the description field for a given transaction."""
+    async def get_transaction(self, transaction_id: int) -> SimplifiedTx:
+        """
+        Fetch a single transaction by ID and return it as a domain model.
+        """
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
-        response = await self._request("get", url)
-        existing = TransactionSingle.model_validate(response)
-        old_desc = existing.data.attributes.transactions[0].description
-        if new_description in old_desc:
-            raise RuntimeError("New data is identical to the current one.")
-        payload = {
-            "apply_rules": True,
-            "fire_webhooks": True,
-            "transactions": [{"description": new_description}],
-        }
-        response_put = await self._request("put", url, json=payload)
-        updated = TransactionSingle.model_validate(response_put)
-        return map_transaction(updated.data)
 
-    async def update_transaction_notes(
-        self, transaction_id: int, new_notes: str
-    ) -> SimplifiedTx:
-        """Replace the notes for a given transaction."""
-        url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
         response = await self._request("get", url)
-        existing = TransactionSingle.model_validate(response)
-        old_notes = existing.data.attributes.transactions[0].notes or ""
-        if new_notes in old_notes:
-            raise RuntimeError("New data is identical to the current one.")
-        payload = {
-            "apply_rules": True,
-            "fire_webhooks": True,
-            "transactions": [{"notes": new_notes}],
-        }
-        response_put = await self._request("put", url, json=payload)
-        updated = TransactionSingle.model_validate(response_put)
-        return map_transaction(updated.data)
+        dto = TransactionSingle.model_validate(response)
 
-    async def assign_transaction_category(
-        self, transaction_id: int, new_category_id: int
-    ) -> SimplifiedTx:
-        """Assign a category to the specified transaction."""
-        url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
-        response = await self._request("get", url)
-        existing = TransactionSingle.model_validate(response)
-        old_category = existing.data.attributes.transactions[0].category_id
-        if old_category is not None and old_category == str(new_category_id):
-            raise RuntimeError("New data is identical to the current one.")
-        payload = {
-            "apply_rules": True,
-            "fire_webhooks": True,
-            "transactions": [{"category_id": str(new_category_id)}],
-        }
-        response_put = await self._request("put", url, json=payload)
-        updated = TransactionSingle.model_validate(response_put)
-        return map_transaction(updated.data)
+        return map_transaction(dto.data)
 
-    async def add_tag_to_transaction(
-        self, transaction_id: int, new_tag: str
+    async def update_transaction(
+        self, transaction_id: int, update: TransactionUpdate
     ) -> SimplifiedTx:
-        """Attach a tag to the specified transaction."""
+        """Update selected fields for a given transaction."""
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
-        response = await self._request("get", url)
-        existing = TransactionSingle.model_validate(response)
-        old_sub_transactions = existing.data.attributes.transactions
-        if len(old_sub_transactions) != 1:
-            raise RuntimeError("Transaction is not single part")
-        old_sub_tx = old_sub_transactions[0]
-        tags = list(old_sub_tx.tags or [])
-        if new_tag not in tags:
-            tags.append(new_tag)
+        split_update: dict[str, Any] = {}
+        if update.description is not None:
+            split_update["description"] = update.description
+        if update.notes is not None:
+            split_update["notes"] = update.notes
+        if update.tags is not None:
+            split_update["tags"] = list(update.tags)
+        if update.category_id is not None:
+            split_update["category_id"] = str(update.category_id)
+        if not split_update:
+            raise ValueError("Transaction update payload is empty.")
         payload = {
             "apply_rules": True,
             "fire_webhooks": True,
-            "transactions": [{"tags": tags}],
+            "transactions": [split_update],
         }
         response_put = await self._request("put", url, json=payload)
         updated = TransactionSingle.model_validate(response_put)

@@ -1,12 +1,11 @@
 """Demonstrate minimal usage of :class:`FireflyClient`. editing category"""
 
 import asyncio
-import json
 import logging
 
 from settings_min import settings
 
-from fireflyiii_enricher_core.api import FireflyClient
+from fireflyiii_enricher_core.api import FireflyClient, TransactionUpdate
 
 logging.basicConfig(level=logging.INFO)
 
@@ -16,8 +15,10 @@ async def main() -> None:
     firefly = FireflyClient(base_url=settings.firefly_url, token=settings.firefly_token)
     try:
         tx_id = 4080
-        response = await firefly.assign_transaction_category(tx_id, new_category_id=2)
-        print(json.dumps(response, indent=2, ensure_ascii=False))
+        response = await firefly.update_transaction(
+            tx_id, TransactionUpdate(category_id=2)
+        )
+        print(response)
     finally:
         await firefly.close()
 
