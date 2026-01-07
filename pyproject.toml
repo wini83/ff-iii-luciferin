@@ -132,6 +132,21 @@ exclude = '''
 )
 '''
 
+[tool.coverage.run]
+branch = true
+source = ["ff_iii_luciferin"]
+omit = [
+    "ff_iii_luciferin/openapi/*",
+    "ff_iii_luciferin/openapi/**",
+    "tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+]
+
 [project.urls]
 Homepage = "https://github.com/wini83/ff-iii-luciferin"
 Repository = "https://github.com/wini83/ff-iii-luciferin"
