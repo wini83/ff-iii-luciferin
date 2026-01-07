@@ -1,17 +1,17 @@
 from datetime import datetime
 from decimal import Decimal
 
-from fireflyiii_enricher_core.api.openapi_types import (
+from ff_iii_luciferin.api.openapi_types import (
     TransactionTypeProperty,
 )
-from fireflyiii_enricher_core.mappers.transaction_mapper import (
+from ff_iii_luciferin.mappers.transaction_mapper import (
     TransactionMapResult,
     map_transaction,
 )
-from fireflyiii_enricher_core.openapi.openapi_client.models.transaction import (
+from ff_iii_luciferin.openapi.openapi_client.models.transaction import (
     Transaction,
 )
-from fireflyiii_enricher_core.openapi.openapi_client.models.transaction_read import (
+from ff_iii_luciferin.openapi.openapi_client.models.transaction_read import (
     TransactionRead,
 )
 

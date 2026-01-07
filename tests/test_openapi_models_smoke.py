@@ -1,4 +1,4 @@
-from fireflyiii_enricher_core.openapi.openapi_client.models.transaction_read import (
+from ff_iii_luciferin.openapi.openapi_client.models.transaction_read import (
     TransactionRead,
 )
 

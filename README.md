@@ -43,7 +43,7 @@ import os
 
 from dotenv import load_dotenv
 
-from fireflyiii_enricher_core.api import FireflyClient
+from ff_iii_luciferin.api import FireflyClient
 
 load_dotenv()
 
@@ -76,7 +76,7 @@ async def main() -> None:
 asyncio.run(main())
 
 ```
-Helper filters are also re-exported from `fireflyiii_enricher_core.api`.
+Helper filters are also re-exported from `ff_iii_luciferin.api`.
 
 ## 🧪 Testing
 

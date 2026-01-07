@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from fireflyiii_enricher_core.api.client import FireflyAPIError, FireflyClient
-from fireflyiii_enricher_core.api.transaction_update import TransactionUpdate
-from fireflyiii_enricher_core.domain.models import SimplifiedCategory, SimplifiedTx
+from ff_iii_luciferin.api.client import FireflyAPIError, FireflyClient
+from ff_iii_luciferin.api.transaction_update import TransactionUpdate
+from ff_iii_luciferin.domain.models import SimplifiedCategory, SimplifiedTx
 
 BASE_URL = "https://demo.firefly.local"
 TOKEN = "test-token"
@@ -92,7 +92,7 @@ def _category_array_response(
 
 
 @patch(
-    "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
     new_callable=AsyncMock,
 )
 def test_fetch_transactions(mock_request: MagicMock) -> None:
@@ -115,7 +115,7 @@ def test_fetch_transactions(mock_request: MagicMock) -> None:
 
 
 @patch(
-    "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
     new_callable=AsyncMock,
 )
 def test_fetch_categories(mock_request: MagicMock) -> None:
@@ -142,7 +142,7 @@ def test_fetch_categories(mock_request: MagicMock) -> None:
 
 
 @patch(
-    "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
     new_callable=AsyncMock,
 )
 def test_get_transaction_happy_path(mock_request: MagicMock) -> None:
@@ -168,7 +168,7 @@ def test_get_transaction_happy_path(mock_request: MagicMock) -> None:
 
 
 @patch(
-    "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
     new_callable=AsyncMock,
 )
 def test_get_transaction_multipart_raises(mock_request: MagicMock) -> None:
@@ -195,7 +195,7 @@ def test_get_transaction_multipart_raises(mock_request: MagicMock) -> None:
 
 
 @patch(
-    "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
     new_callable=AsyncMock,
 )
 def test_get_transaction_invalid_dto_raises(mock_request: MagicMock) -> None:
@@ -236,7 +236,7 @@ def test_get_transaction_invalid_dto_raises(mock_request: MagicMock) -> None:
     ],
 )
 @patch(
-    "fireflyiii_enricher_core.api.client.httpx.AsyncClient.request",
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
     new_callable=AsyncMock,
 )
 def test_update_transaction_fields(

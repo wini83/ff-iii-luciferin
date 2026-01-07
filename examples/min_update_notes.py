@@ -5,7 +5,7 @@ import logging
 
 from settings_min import settings
 
-from fireflyiii_enricher_core.api import FireflyClient, TransactionUpdate
+from ff_iii_luciferin.api import FireflyClient, TransactionUpdate
 
 logging.basicConfig(level=logging.INFO)
 

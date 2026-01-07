@@ -1,8 +1,8 @@
 from datetime import date
 from decimal import Decimal
 
-from fireflyiii_enricher_core.domain.models import SimplifiedItem, SimplifiedTx
-from fireflyiii_enricher_core.services.basic_matcher import match
+from ff_iii_luciferin.domain.models import SimplifiedItem, SimplifiedTx
+from ff_iii_luciferin.services.basic_matcher import match
 
 
 def test_match_returns_records_with_same_date_and_amount() -> None:
