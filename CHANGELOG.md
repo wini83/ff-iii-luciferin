@@ -1,3 +1,9 @@
+## v1.0.0a1 (2026-01-07)
+
+### Fix
+
+- **version**: read version from package metadata
+
 ## v1.0.0a0 (2026-01-07)
 
 ### BREAKING CHANGE
