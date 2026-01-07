@@ -1,12 +1,14 @@
 # ff-iii-luciferin
 
 [![CI](https://github.com/wini83/ff-iii-luciferin/actions/workflows/ci.yml/badge.svg)](https://github.com/wini83/ff-iii-luciferin/actions/workflows/ci.yml)
-![PyPI](https://img.shields.io/pypi/v/ff-iii-luciferin)
-![Python](https://img.shields.io/pypi/pyversions/ff-iii-luciferin)
-![License](https://img.shields.io/pypi/l/ff-iii-luciferin)
+![PyPI](https://img.shields.io/pypi/v/ff-iii-luciferin?include_prereleases)
+![Python](https://img.shields.io/pypi/pyversions/ff-iii-luciferin?include_prereleases)
+![License](https://img.shields.io/pypi/l/ff-iii-luciferin?include_prereleases)
 
 **ff-iii-luciferin** is a Python enrichment engine for  
 [Firefly III](https://www.firefly-iii.org/) transactions.
+
+⚠️ This project is currently in **beta**. APIs may still change.
 
 It provides a clean, async-first API for post-processing financial data:
 descriptions, notes, tags, and categories — without polluting your domain logic.
