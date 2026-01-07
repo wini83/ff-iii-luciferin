@@ -1,8 +1,23 @@
-## Unreleased
+## v1.0.0a0 (2026-01-07)
+
+### BREAKING CHANGE
+
+- Fixes #6
 
 ### Refactor
 
-- **api/client**: move Firefly client to API layer and return domain models only
+- adjusted ci workflow
+- adjust mypy scope and CI typecheck target
+- rename project to ff-iii-luciferin
+- **api**: Update client mapping contract and tests
+- **api**: simplify Firefly client updates
+- **api**: move firefly client to api layer and re-export helpers
+- reo of files
+- **openapi**: reo of model files
+- added auto-generated firefly models
+- **openapi**: add spec, generator makefile, and exclude generated api from tooling
+- **examples**: add shared settings and logging; drop py3.11 CI
+- migrate FireflyClient to async httpx client
 
 ## v0.7.0 (2025-11-16)
 
