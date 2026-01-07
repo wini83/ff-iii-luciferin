@@ -1,5 +1,10 @@
 # ff-iii-luciferin
 
+[![CI](https://github.com/wini83/ff-iii-luciferin/actions/workflows/ci.yml/badge.svg)](https://github.com/wini83/ff-iii-luciferin/actions/workflows/ci.yml)
+![PyPI](https://img.shields.io/pypi/v/ff-iii-luciferin)
+![Python](https://img.shields.io/pypi/pyversions/ff-iii-luciferin)
+![License](https://img.shields.io/pypi/l/ff-iii-luciferin)
+
 **ff-iii-luciferin** is a Python enrichment engine for  
 [Firefly III](https://www.firefly-iii.org/) transactions.
 
@@ -98,4 +103,4 @@ asyncio.run(main())
 
 MIT License.  
 
-See the `LICENSE` file for details.
+MIT License — see [LICENSE](LICENSE) for details.
