@@ -1,3 +1,5 @@
-"""Version information for Firefly III Enricher Core."""
+"""Version information for ff-iii-luciferin package."""
 
-__version__ = "0.1.0"
+from importlib.metadata import version
+
+__version__ = version("ff-iii-luciferin")

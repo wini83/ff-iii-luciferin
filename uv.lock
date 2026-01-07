@@ -298,7 +298,7 @@ wheels = [
 
 [[package]]
 name = "ff-iii-luciferin"
-version = "0.7.0"
+version = "1.0.0a0"
 source = { editable = "." }
 dependencies = [
     { name = "aenum" },
