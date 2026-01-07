@@ -1,109 +1,101 @@
-# Firefly III Enricher Core 
-[![Python package](https://github.com/wini83/fireflyiii-enricher-core/actions/workflows/python-package.yml/badge.svg)](https://github.com/wini83/fireflyiii-enricher-core/actions/workflows/python-package.yml) [![Pylint](https://github.com/wini83/fireflyiii-enricher-core/actions/workflows/pylint.yml/badge.svg)](https://github.com/wini83/fireflyiii-enricher-core/actions/workflows/pylint.yml)
+# ff-iii-luciferin
 
-A Python library for enriching Firefly III transactions by updating descriptions, notes, and tags.
+**ff-iii-luciferin** is a Python enrichment engine for  
+[Firefly III](https://www.firefly-iii.org/) transactions.
 
-## ✨ Features
+It provides a clean, async-first API for post-processing financial data:
+descriptions, notes, tags, and categories — without polluting your domain logic.
 
-- ✅ Fetch transactions from Firefly III API
-- 📂 Fetch categories from Firefly III API
+---
+
+## ✨ Key Features
+
+- 🔌 Async client for Firefly III API (built on `httpx`)
 - 📝 Update transaction **descriptions** and **notes**
-- 🏷️ Add tags to transactions
-- 📝 Assign category
-- 🚫 Filter uncategorized or single-part transactions
-- ⚠️ Robust error handling (timeouts, connection issues, malformed responses)
+- 🏷️ Add or manage **tags**
+- 🗂️ Assign or change **categories**
+- 🚫 Filter unwanted transactions (e.g. uncategorized, split-only)
+- ⚠️ Explicit handling of API, network, and data errors
+- 🧱 Generated OpenAPI client kept internal (not public API)
+
+---
 
 ## 📦 Installation
 
-```bash
-pip install git+https://github.com/wini83/fireflyiii-enricher-core.git
-```
+From PyPI:
 
-## 🧰 Requirements
+````bash
+pip install ff-iii-luciferin
+````
 
-- Python 3.12+
-- `httpx`
-- `python-dotenv` (optional, for loading environment variables from `.env`)
+Python **3.12+** required.
 
-## ⚙️ Usage
+---
 
-### Environment Setup
+## ⚙️ Configuration
 
-```env
-# .env file
+The client requires access to your Firefly III instance and a personal access token.
+
+Provide them via environment variables:
+
+````env
 FIREFLY_URL=https://your-firefly-instance/api
 FIREFLY_TOKEN=your_access_token
-```
+````
 
-### Minimal Example
+Using `python-dotenv` is optional but recommended for local development.
 
-```python
+---
+
+## 🚀 Quick Start
+
+Minimal async example:
+
+````python
 import asyncio
 import os
 
-from dotenv import load_dotenv
-
 from ff_iii_luciferin.api import FireflyClient
 
-load_dotenv()
 
 async def main() -> None:
     client = FireflyClient(
-        base_url=os.getenv("FIREFLY_URL"),
-        token=os.getenv("FIREFLY_TOKEN")
+        base_url=os.environ["FIREFLY_URL"],
+        token=os.environ["FIREFLY_TOKEN"],
     )
-    try:
-        # Fetch latest withdrawals
-        transactions = await client.fetch_transactions()
 
-        # Fetch categories
+    try:
+        transactions = await client.fetch_transactions()
         categories = await client.fetch_categories()
 
-        # Update description
-        await client.update_transaction_description(123, "New description")
+        await client.update_transaction_description(
+            transaction_id=123,
+            description="Updated description",
+        )
 
-        # Update notes
-        await client.update_transaction_notes(123, "Some extra notes")
+        await client.update_transaction_notes(
+            transaction_id=123,
+            notes="Additional notes",
+        )
 
-        # Add a tag
-        await client.add_tag_to_transaction(123, "processed")
+        await client.add_tag_to_transaction(
+            transaction_id=123,
+            tag="processed",
+        )
 
-        # assign category
-        await client.assign_transaction_category(123, new_category_id=1)
+        await client.assign_transaction_category(
+            transaction_id=123,
+            new_category_id=1,
+        )
     finally:
         await client.close()
 
+
 asyncio.run(main())
-
-```
-Helper filters are also re-exported from `ff_iii_luciferin.api`.
-
-## 🧪 Testing
-
-### Install development dependencies
-
-```bash
-pip install -e .[dev]
-```
-
-### Run tests
-
-```bash
-pytest
-```
-
-### Linting
-
-```bash
-pylint $(git ls-files '*.py')
-```
-
-## 🛠 Development
-
-- Use `.env` for secrets/tokens (not committed to version control)
-- Follow PEP8 and naming conventions
-- Keep public methods well-documented
+````
 
 ## 📄 License
 
-MIT License — see [`LICENSE`](LICENSE) for full text.
+MIT License.  
+
+See the `LICENSE` file for details.

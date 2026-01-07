@@ -4,11 +4,16 @@ version = "0.7.0"
 description = "A Firefly III enrichment engine that makes your data glow"
 authors = [{ name = "wini83", email = "rico.gotti210@gmail.com" }]
 readme = "README.md"
-license = { text = "MIT" }
 requires-python = ">=3.12"
 
+license = { text = "MIT" }
+
+keywords = ["firefly-iii", "finance", "enrichment", "transactions", "api"]
+
 classifiers = [
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
     "Operating System :: OS Independent",
 ]
 
@@ -95,7 +100,9 @@ dev = [
 "ff_iii_luciferin" = ["py.typed"]
 
 [tool.setuptools.packages.find]
-exclude = ["openapi*"]
+# Explicit include to avoid setuptools flat-layout auto-discovery issues
+include = ["ff_iii_luciferin*"]
+
 
 # --------------------
 # Black (only for legacy / editors)
@@ -103,3 +110,9 @@ exclude = ["openapi*"]
 [tool.black]
 line-length = 88
 exclude = "ff_iii_luciferin/openapi"
+
+[project.urls]
+Homepage = "https://github.com/wini83/ff-iii-luciferin"
+Repository = "https://github.com/wini83/ff-iii-luciferin"
+Issues = "https://github.com/wini83/ff-iii-luciferin/issues"
+Changelog = "https://github.com/wini83/ff-iii-luciferin/blob/main/CHANGELOG.md"
