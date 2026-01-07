@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from ff_iii_luciferin.api.client import FireflyAPIError
+from ff_iii_luciferin.api.errors import FireflyAPIError
 from ff_iii_luciferin.domain.models import SimplifiedTx
 from ff_iii_luciferin.mappers.transaction_mapper import map_transaction
 from ff_iii_luciferin.openapi.openapi_client.models.category_array import (

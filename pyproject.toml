@@ -34,7 +34,7 @@ version = "0.7.0"
 tag_format = "v$version"
 version_files = ["pyproject.toml"]
 update_changelog_on_bump = true
-annotated_tags = true
+annotated_tag = true
 
 # --------------------
 # Ruff (lint + format)
@@ -69,7 +69,18 @@ line-ending = "auto"
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
-exclude = ["build"]
+follow_imports = "skip"
+
+exclude = [
+    "build",
+    "examples",
+    "ff_iii_luciferin/openapi",
+]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_untyped_decorators = false
 
 # --------------------
 # Build backend
@@ -91,6 +102,7 @@ dev = [
     "mypy",
     "commitizen",
     "python-dotenv",
+    "black"
 ]
 
 # --------------------
@@ -109,10 +121,20 @@ include = ["ff_iii_luciferin*"]
 # --------------------
 [tool.black]
 line-length = 88
-exclude = "ff_iii_luciferin/openapi"
+exclude = '''
+(
+    \.venv
+  | venv
+  | site-packages
+  | build
+  | dist
+  | ff_iii_luciferin/openapi
+)
+'''
 
 [project.urls]
 Homepage = "https://github.com/wini83/ff-iii-luciferin"
 Repository = "https://github.com/wini83/ff-iii-luciferin"
 Issues = "https://github.com/wini83/ff-iii-luciferin/issues"
 Changelog = "https://github.com/wini83/ff-iii-luciferin/blob/main/CHANGELOG.md"
+

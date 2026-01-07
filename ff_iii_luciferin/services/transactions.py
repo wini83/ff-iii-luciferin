@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import List
 
-from ff_iii_luciferin.api.client import FireflyClient
+from ff_iii_luciferin.api import FireflyClient
 from ff_iii_luciferin.domain.models import SimplifiedTx
 
 

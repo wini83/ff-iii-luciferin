@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from ff_iii_luciferin.api.client import FireflyAPIError, FireflyClient
+from ff_iii_luciferin.api import FireflyAPIError, FireflyClient
 from ff_iii_luciferin.api.transaction_update import TransactionUpdate
 from ff_iii_luciferin.domain.models import SimplifiedCategory, SimplifiedTx
 
