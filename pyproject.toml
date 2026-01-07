@@ -1,6 +1,6 @@
 [project]
 name = "ff-iii-luciferin"
-version = "1.0.0b0"
+version = "1.0.0b1"
 description = "A Firefly III enrichment engine that makes your data glow"
 authors = [{ name = "wini83", email = "rico.gotti210@gmail.com" }]
 readme = "README.md"
@@ -30,7 +30,7 @@ dependencies = [
 # --------------------
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "1.0.0b0"
+version = "1.0.0b1"
 tag_format = "v$version"
 version_files = ["pyproject.toml"]
 update_changelog_on_bump = true
