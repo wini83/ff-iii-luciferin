@@ -1,3 +1,9 @@
+## v1.0.0b2 (2026-01-08)
+
+### Refactor
+
+- **domain**: model optional notes and category explicitly
+
 ## v1.0.0b1 (2026-01-07)
 
 ## v1.0.0b0 (2026-01-07)
