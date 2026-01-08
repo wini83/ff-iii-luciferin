@@ -20,6 +20,8 @@ async def main() -> None:
             logging.info(f"TX {tx.id} - {tx.amount} - {tx.date} ; {tx.description}, ")
     finally:
         await firefly.close()
+    uncategorized = [tx for tx in transactions if tx.category is None]
+    logging.info("Found %s uncategorized transactions", len(uncategorized))
 
 
 asyncio.run(main())

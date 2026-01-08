@@ -22,8 +22,8 @@ class SimplifiedTx(SimplifiedItem):
     id: int
     description: str
     tags: List[str]
-    notes: str
-    category: str
+    notes: str | None
+    category: str | None
 
 
 @dataclass

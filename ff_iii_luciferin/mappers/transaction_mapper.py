@@ -44,8 +44,8 @@ def map_transaction(tx: TransactionRead) -> TransactionMapResult:
         amount=amount,
         date=split.var_date.date(),
         tags=list(split.tags or []),
-        notes=split.notes or "",
-        category=split.category_name or "",
+        notes=split.notes or None,
+        category=split.category_name or None,
     )
 
     return TransactionMapResult(tx=simple_tx, reason=None)
