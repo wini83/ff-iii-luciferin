@@ -22,6 +22,13 @@ from ff_iii_luciferin.mappers.transaction_mapper import (
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_TIMEOUT = httpx.Timeout(
+    connect=10.0,
+    read=60.0,
+    write=30.0,
+    pool=10.0,
+)
+
 
 class FireflyClient:
     """Minimal wrapper around the Firefly III REST API."""
@@ -34,7 +41,10 @@ class FireflyClient:
             "Accept": "application/vnd.api+json",
             "Content-Type": "application/vnd.api+json",
         }
-        self._client = httpx.AsyncClient(headers=self.headers, timeout=10.0)
+        transport = httpx.AsyncHTTPTransport(retries=2)
+        self._client = httpx.AsyncClient(
+            headers=self.headers, timeout=DEFAULT_TIMEOUT, transport=transport
+        )
 
     async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
         try:
@@ -49,7 +59,7 @@ class FireflyClient:
                 ) from exc
 
         except httpx.TimeoutException as exc:
-            raise FireflyAPIError("Request timed out") from exc
+            raise FireflyAPIError(f"Request timed out: {method.upper()} {url}") from exc
         except httpx.HTTPStatusError as exc:
             status_code = exc.response.status_code
             raise FireflyAPIError(
@@ -99,13 +109,22 @@ class FireflyClient:
                 break
 
             params["page"] = page
-
+            logger.info(
+                "Fetching Firefly transactions: page=%s, page_size=%s", page, page_size
+            )
             response = await self._request("get", url, params=params)
             data = validate_response_transaction_array(response)
 
             for tx_dto in data.data:
                 yield map_transaction(tx_dto)
-
+            logger.info(
+                "Fetched page %s with %s transactions",
+                page,
+                len(data.data),
+            )
+            if not data.data:
+                logger.warning("Empty page %s, stopping pagination", page)
+                break
             if not data.links.next:
                 break
 
