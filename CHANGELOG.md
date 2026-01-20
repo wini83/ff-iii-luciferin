@@ -1,3 +1,9 @@
+## v1.0.0b4 (2026-01-20)
+
+### Refactor
+
+- **client**: add retries, granular timeouts, and pagination logging
+
 ## v1.0.0b3 (2026-01-20)
 
 ### Fix
