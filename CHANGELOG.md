@@ -1,3 +1,9 @@
+## v1.0.0b3 (2026-01-20)
+
+### Fix
+
+- **openapi**: migration to pydantic v2
+
 ## v1.0.0b2 (2026-01-08)
 
 ### Refactor
