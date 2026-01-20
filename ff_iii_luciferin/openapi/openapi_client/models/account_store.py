@@ -19,8 +19,16 @@ import re  # noqa: F401
 import json
 
 from datetime import datetime
-from typing import Optional, Union
-from pydantic import BaseModel, Field, StrictBool, StrictFloat, StrictInt, StrictStr
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    StrictFloat,
+    StrictInt,
+    StrictStr,
+)
+from typing import Any, ClassVar, Dict, List, Optional, Union
 from openapi_client.models.account_role_property import AccountRoleProperty
 from openapi_client.models.credit_card_type_property import CreditCardTypeProperty
 from openapi_client.models.interest_period_property import InterestPeriodProperty
@@ -29,15 +37,17 @@ from openapi_client.models.liability_direction_property import (
 )
 from openapi_client.models.liability_type_property import LiabilityTypeProperty
 from openapi_client.models.short_account_type_property import ShortAccountTypeProperty
+from typing import Optional, Set
+from typing_extensions import Self
 
 
 class AccountStore(BaseModel):
     """
     AccountStore
-    """
+    """  # noqa: E501
 
-    name: StrictStr = Field(...)
-    type: ShortAccountTypeProperty = Field(...)
+    name: StrictStr
+    type: ShortAccountTypeProperty
     iban: Optional[StrictStr] = None
     bic: Optional[StrictStr] = None
     account_number: Optional[StrictStr] = None
@@ -90,7 +100,7 @@ class AccountStore(BaseModel):
         default=None,
         description="Zoom level for the map, if drawn. This to set the box right. Unfortunately this is a proprietary value because each map provider has different zoom levels.",
     )
-    __properties = [
+    __properties: ClassVar[List[str]] = [
         "name",
         "type",
         "iban",
@@ -117,124 +127,142 @@ class AccountStore(BaseModel):
         "zoom_level",
     ]
 
-    class Config:
-        """Pydantic configuration"""
-
-        allow_population_by_field_name = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
     def to_str(self) -> str:
         """Returns the string representation of the model using alias"""
-        return pprint.pformat(self.dict(by_alias=True))
+        return pprint.pformat(self.model_dump(by_alias=True))
 
     def to_json(self) -> str:
         """Returns the JSON representation of the model using alias"""
+        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> AccountStore:
+    def from_json(cls, json_str: str) -> Optional[Self]:
         """Create an instance of AccountStore from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
-    def to_dict(self):
-        """Returns the dictionary representation of the model using alias"""
-        _dict = self.dict(by_alias=True, exclude={}, exclude_none=True)
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the dictionary representation of the model using alias.
+
+        This has the following differences from calling pydantic's
+        `self.model_dump(by_alias=True)`:
+
+        * `None` is only added to the output dict for nullable fields that
+          were set at model initialization. Other fields with value `None`
+          are ignored.
+        """
+        excluded_fields: Set[str] = set([])
+
+        _dict = self.model_dump(
+            by_alias=True,
+            exclude=excluded_fields,
+            exclude_none=True,
+        )
         # set to None if iban (nullable) is None
-        # and __fields_set__ contains the field
-        if self.iban is None and "iban" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.iban is None and "iban" in self.model_fields_set:
             _dict["iban"] = None
 
         # set to None if bic (nullable) is None
-        # and __fields_set__ contains the field
-        if self.bic is None and "bic" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.bic is None and "bic" in self.model_fields_set:
             _dict["bic"] = None
 
         # set to None if account_number (nullable) is None
-        # and __fields_set__ contains the field
-        if self.account_number is None and "account_number" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.account_number is None and "account_number" in self.model_fields_set:
             _dict["account_number"] = None
 
         # set to None if opening_balance_date (nullable) is None
-        # and __fields_set__ contains the field
+        # and model_fields_set contains the field
         if (
             self.opening_balance_date is None
-            and "opening_balance_date" in self.__fields_set__
+            and "opening_balance_date" in self.model_fields_set
         ):
             _dict["opening_balance_date"] = None
 
         # set to None if account_role (nullable) is None
-        # and __fields_set__ contains the field
-        if self.account_role is None and "account_role" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.account_role is None and "account_role" in self.model_fields_set:
             _dict["account_role"] = None
 
         # set to None if credit_card_type (nullable) is None
-        # and __fields_set__ contains the field
-        if self.credit_card_type is None and "credit_card_type" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if (
+            self.credit_card_type is None
+            and "credit_card_type" in self.model_fields_set
+        ):
             _dict["credit_card_type"] = None
 
         # set to None if monthly_payment_date (nullable) is None
-        # and __fields_set__ contains the field
+        # and model_fields_set contains the field
         if (
             self.monthly_payment_date is None
-            and "monthly_payment_date" in self.__fields_set__
+            and "monthly_payment_date" in self.model_fields_set
         ):
             _dict["monthly_payment_date"] = None
 
         # set to None if liability_type (nullable) is None
-        # and __fields_set__ contains the field
-        if self.liability_type is None and "liability_type" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.liability_type is None and "liability_type" in self.model_fields_set:
             _dict["liability_type"] = None
 
         # set to None if liability_direction (nullable) is None
-        # and __fields_set__ contains the field
+        # and model_fields_set contains the field
         if (
             self.liability_direction is None
-            and "liability_direction" in self.__fields_set__
+            and "liability_direction" in self.model_fields_set
         ):
             _dict["liability_direction"] = None
 
         # set to None if interest (nullable) is None
-        # and __fields_set__ contains the field
-        if self.interest is None and "interest" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.interest is None and "interest" in self.model_fields_set:
             _dict["interest"] = None
 
         # set to None if interest_period (nullable) is None
-        # and __fields_set__ contains the field
-        if self.interest_period is None and "interest_period" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.interest_period is None and "interest_period" in self.model_fields_set:
             _dict["interest_period"] = None
 
         # set to None if notes (nullable) is None
-        # and __fields_set__ contains the field
-        if self.notes is None and "notes" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.notes is None and "notes" in self.model_fields_set:
             _dict["notes"] = None
 
         # set to None if latitude (nullable) is None
-        # and __fields_set__ contains the field
-        if self.latitude is None and "latitude" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.latitude is None and "latitude" in self.model_fields_set:
             _dict["latitude"] = None
 
         # set to None if longitude (nullable) is None
-        # and __fields_set__ contains the field
-        if self.longitude is None and "longitude" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.longitude is None and "longitude" in self.model_fields_set:
             _dict["longitude"] = None
 
         # set to None if zoom_level (nullable) is None
-        # and __fields_set__ contains the field
-        if self.zoom_level is None and "zoom_level" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.zoom_level is None and "zoom_level" in self.model_fields_set:
             _dict["zoom_level"] = None
 
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: dict) -> AccountStore:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
         """Create an instance of AccountStore from a dict"""
         if obj is None:
             return None
 
         if not isinstance(obj, dict):
-            return AccountStore.parse_obj(obj)
+            return cls.model_validate(obj)
 
-        _obj = AccountStore.parse_obj(
+        _obj = cls.model_validate(
             {
                 "name": obj.get("name"),
                 "type": obj.get("type"),

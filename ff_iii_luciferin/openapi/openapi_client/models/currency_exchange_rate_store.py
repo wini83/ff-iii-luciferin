@@ -19,67 +19,80 @@ import re  # noqa: F401
 import json
 
 from datetime import date
-from typing import Optional
-from pydantic import BaseModel, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
+from typing import Optional, Set
+from typing_extensions import Self
 
 
 class CurrencyExchangeRateStore(BaseModel):
     """
     CurrencyExchangeRateStore
-    """
+    """  # noqa: E501
 
     var_date: date = Field(
-        default=...,
-        alias="date",
-        description="The date to which the exchange rate is applicable.",
+        description="The date to which the exchange rate is applicable.", alias="date"
     )
-    var_from: StrictStr = Field(
-        default=..., alias="from", description="The base currency code."
-    )
-    to: StrictStr = Field(default=..., description="The destination currency code.")
+    var_from: StrictStr = Field(description="The base currency code.", alias="from")
+    to: StrictStr = Field(description="The destination currency code.")
     rate: Optional[StrictStr] = Field(
         default=None,
         description="The exchange rate from the base currency to the destination currency.",
     )
-    __properties = ["date", "from", "to", "rate"]
+    __properties: ClassVar[List[str]] = ["date", "from", "to", "rate"]
 
-    class Config:
-        """Pydantic configuration"""
-
-        allow_population_by_field_name = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
     def to_str(self) -> str:
         """Returns the string representation of the model using alias"""
-        return pprint.pformat(self.dict(by_alias=True))
+        return pprint.pformat(self.model_dump(by_alias=True))
 
     def to_json(self) -> str:
         """Returns the JSON representation of the model using alias"""
+        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> CurrencyExchangeRateStore:
+    def from_json(cls, json_str: str) -> Optional[Self]:
         """Create an instance of CurrencyExchangeRateStore from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
-    def to_dict(self):
-        """Returns the dictionary representation of the model using alias"""
-        _dict = self.dict(by_alias=True, exclude={}, exclude_none=True)
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the dictionary representation of the model using alias.
+
+        This has the following differences from calling pydantic's
+        `self.model_dump(by_alias=True)`:
+
+        * `None` is only added to the output dict for nullable fields that
+          were set at model initialization. Other fields with value `None`
+          are ignored.
+        """
+        excluded_fields: Set[str] = set([])
+
+        _dict = self.model_dump(
+            by_alias=True,
+            exclude=excluded_fields,
+            exclude_none=True,
+        )
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: dict) -> CurrencyExchangeRateStore:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
         """Create an instance of CurrencyExchangeRateStore from a dict"""
         if obj is None:
             return None
 
         if not isinstance(obj, dict):
-            return CurrencyExchangeRateStore.parse_obj(obj)
+            return cls.model_validate(obj)
 
-        _obj = CurrencyExchangeRateStore.parse_obj(
+        _obj = cls.model_validate(
             {
-                "var_date": obj.get("date"),
-                "var_from": obj.get("from"),
+                "date": obj.get("date"),
+                "from": obj.get("from"),
                 "to": obj.get("to"),
                 "rate": obj.get("rate"),
             }

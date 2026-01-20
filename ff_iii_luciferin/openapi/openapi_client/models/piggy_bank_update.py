@@ -19,18 +19,20 @@ import re  # noqa: F401
 import json
 
 from datetime import date
-from typing import List, Optional
-from pydantic import BaseModel, Field, StrictBool, StrictInt, StrictStr, conlist
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from openapi_client.models.piggy_bank_account_update import PiggyBankAccountUpdate
+from typing import Optional, Set
+from typing_extensions import Self
 
 
 class PiggyBankUpdate(BaseModel):
     """
     PiggyBankUpdate
-    """
+    """  # noqa: E501
 
     name: Optional[StrictStr] = None
-    accounts: Optional[conlist(PiggyBankAccountUpdate)] = None
+    accounts: Optional[List[PiggyBankAccountUpdate]] = None
     currency_id: Optional[StrictStr] = None
     currency_code: Optional[StrictStr] = None
     target_amount: Optional[StrictStr] = None
@@ -50,7 +52,7 @@ class PiggyBankUpdate(BaseModel):
     object_group_title: Optional[StrictStr] = Field(
         default=None, description="The name of the group. NULL if no group."
     )
-    __properties = [
+    __properties: ClassVar[List[str]] = [
         "name",
         "accounts",
         "currency_id",
@@ -65,89 +67,105 @@ class PiggyBankUpdate(BaseModel):
         "object_group_title",
     ]
 
-    class Config:
-        """Pydantic configuration"""
-
-        allow_population_by_field_name = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
     def to_str(self) -> str:
         """Returns the string representation of the model using alias"""
-        return pprint.pformat(self.dict(by_alias=True))
+        return pprint.pformat(self.model_dump(by_alias=True))
 
     def to_json(self) -> str:
         """Returns the JSON representation of the model using alias"""
+        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> PiggyBankUpdate:
+    def from_json(cls, json_str: str) -> Optional[Self]:
         """Create an instance of PiggyBankUpdate from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
-    def to_dict(self):
-        """Returns the dictionary representation of the model using alias"""
-        _dict = self.dict(
-            by_alias=True,
-            exclude={
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the dictionary representation of the model using alias.
+
+        This has the following differences from calling pydantic's
+        `self.model_dump(by_alias=True)`:
+
+        * `None` is only added to the output dict for nullable fields that
+          were set at model initialization. Other fields with value `None`
+          are ignored.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        """
+        excluded_fields: Set[str] = set(
+            [
                 "currency_id",
                 "currency_code",
                 "active",
-            },
+            ]
+        )
+
+        _dict = self.model_dump(
+            by_alias=True,
+            exclude=excluded_fields,
             exclude_none=True,
         )
         # override the default output from pydantic by calling `to_dict()` of each item in accounts (list)
         _items = []
         if self.accounts:
-            for _item in self.accounts:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_accounts in self.accounts:
+                if _item_accounts:
+                    _items.append(_item_accounts.to_dict())
             _dict["accounts"] = _items
         # set to None if target_amount (nullable) is None
-        # and __fields_set__ contains the field
-        if self.target_amount is None and "target_amount" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.target_amount is None and "target_amount" in self.model_fields_set:
             _dict["target_amount"] = None
 
         # set to None if target_date (nullable) is None
-        # and __fields_set__ contains the field
-        if self.target_date is None and "target_date" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.target_date is None and "target_date" in self.model_fields_set:
             _dict["target_date"] = None
 
         # set to None if notes (nullable) is None
-        # and __fields_set__ contains the field
-        if self.notes is None and "notes" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.notes is None and "notes" in self.model_fields_set:
             _dict["notes"] = None
 
         # set to None if object_group_id (nullable) is None
-        # and __fields_set__ contains the field
-        if self.object_group_id is None and "object_group_id" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.object_group_id is None and "object_group_id" in self.model_fields_set:
             _dict["object_group_id"] = None
 
         # set to None if object_group_title (nullable) is None
-        # and __fields_set__ contains the field
+        # and model_fields_set contains the field
         if (
             self.object_group_title is None
-            and "object_group_title" in self.__fields_set__
+            and "object_group_title" in self.model_fields_set
         ):
             _dict["object_group_title"] = None
 
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: dict) -> PiggyBankUpdate:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
         """Create an instance of PiggyBankUpdate from a dict"""
         if obj is None:
             return None
 
         if not isinstance(obj, dict):
-            return PiggyBankUpdate.parse_obj(obj)
+            return cls.model_validate(obj)
 
-        _obj = PiggyBankUpdate.parse_obj(
+        _obj = cls.model_validate(
             {
                 "name": obj.get("name"),
                 "accounts": (
                     [
                         PiggyBankAccountUpdate.from_dict(_item)
-                        for _item in obj.get("accounts")
+                        for _item in obj["accounts"]
                     ]
                     if obj.get("accounts") is not None
                     else None

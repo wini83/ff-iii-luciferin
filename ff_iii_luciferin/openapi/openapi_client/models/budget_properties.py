@@ -19,24 +19,26 @@ import re  # noqa: F401
 import json
 
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, Field, StrictBool, StrictInt, StrictStr, conlist
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from openapi_client.models.array_entry_with_currency_and_sum import (
     ArrayEntryWithCurrencyAndSum,
 )
 from openapi_client.models.auto_budget_period import AutoBudgetPeriod
 from openapi_client.models.auto_budget_type import AutoBudgetType
+from typing import Optional, Set
+from typing_extensions import Self
 
 
 class BudgetProperties(BaseModel):
     """
     BudgetProperties
-    """
+    """  # noqa: E501
 
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     active: Optional[StrictBool] = None
-    name: StrictStr = Field(...)
+    name: StrictStr
     order: Optional[StrictInt] = None
     notes: Optional[StrictStr] = None
     auto_budget_type: Optional[AutoBudgetType] = None
@@ -97,15 +99,15 @@ class BudgetProperties(BaseModel):
         default=None,
         description="The amount for the auto-budget, if set in the primary currency of the administration.",
     )
-    spent: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = Field(
+    spent: Optional[List[ArrayEntryWithCurrencyAndSum]] = Field(
         default=None,
         description="Information on how much was spent in this budget. Is only filled in when the start and end date are submitted.",
     )
-    pc_spent: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = Field(
+    pc_spent: Optional[List[ArrayEntryWithCurrencyAndSum]] = Field(
         default=None,
         description="Information on how much was spent in this budget. Is only filled in when the start and end date are submitted. It is converted to the primary currency of the administration.",
     )
-    __properties = [
+    __properties: ClassVar[List[str]] = [
         "created_at",
         "updated_at",
         "active",
@@ -134,30 +136,52 @@ class BudgetProperties(BaseModel):
         "pc_spent",
     ]
 
-    class Config:
-        """Pydantic configuration"""
-
-        allow_population_by_field_name = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
     def to_str(self) -> str:
         """Returns the string representation of the model using alias"""
-        return pprint.pformat(self.dict(by_alias=True))
+        return pprint.pformat(self.model_dump(by_alias=True))
 
     def to_json(self) -> str:
         """Returns the JSON representation of the model using alias"""
+        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> BudgetProperties:
+    def from_json(cls, json_str: str) -> Optional[Self]:
         """Create an instance of BudgetProperties from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
-    def to_dict(self):
-        """Returns the dictionary representation of the model using alias"""
-        _dict = self.dict(
-            by_alias=True,
-            exclude={
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the dictionary representation of the model using alias.
+
+        This has the following differences from calling pydantic's
+        `self.model_dump(by_alias=True)`:
+
+        * `None` is only added to the output dict for nullable fields that
+          were set at model initialization. Other fields with value `None`
+          are ignored.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        """
+        excluded_fields: Set[str] = set(
+            [
                 "created_at",
                 "updated_at",
                 "order",
@@ -172,90 +196,98 @@ class BudgetProperties(BaseModel):
                 "primary_currency_decimal_places",
                 "spent",
                 "pc_spent",
-            },
+            ]
+        )
+
+        _dict = self.model_dump(
+            by_alias=True,
+            exclude=excluded_fields,
             exclude_none=True,
         )
         # override the default output from pydantic by calling `to_dict()` of each item in spent (list)
         _items = []
         if self.spent:
-            for _item in self.spent:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_spent in self.spent:
+                if _item_spent:
+                    _items.append(_item_spent.to_dict())
             _dict["spent"] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in pc_spent (list)
         _items = []
         if self.pc_spent:
-            for _item in self.pc_spent:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_pc_spent in self.pc_spent:
+                if _item_pc_spent:
+                    _items.append(_item_pc_spent.to_dict())
             _dict["pc_spent"] = _items
         # set to None if notes (nullable) is None
-        # and __fields_set__ contains the field
-        if self.notes is None and "notes" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.notes is None and "notes" in self.model_fields_set:
             _dict["notes"] = None
 
         # set to None if auto_budget_type (nullable) is None
-        # and __fields_set__ contains the field
-        if self.auto_budget_type is None and "auto_budget_type" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if (
+            self.auto_budget_type is None
+            and "auto_budget_type" in self.model_fields_set
+        ):
             _dict["auto_budget_type"] = None
 
         # set to None if auto_budget_period (nullable) is None
-        # and __fields_set__ contains the field
+        # and model_fields_set contains the field
         if (
             self.auto_budget_period is None
-            and "auto_budget_period" in self.__fields_set__
+            and "auto_budget_period" in self.model_fields_set
         ):
             _dict["auto_budget_period"] = None
 
         # set to None if object_group_id (nullable) is None
-        # and __fields_set__ contains the field
-        if self.object_group_id is None and "object_group_id" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.object_group_id is None and "object_group_id" in self.model_fields_set:
             _dict["object_group_id"] = None
 
         # set to None if object_group_order (nullable) is None
-        # and __fields_set__ contains the field
+        # and model_fields_set contains the field
         if (
             self.object_group_order is None
-            and "object_group_order" in self.__fields_set__
+            and "object_group_order" in self.model_fields_set
         ):
             _dict["object_group_order"] = None
 
         # set to None if object_group_title (nullable) is None
-        # and __fields_set__ contains the field
+        # and model_fields_set contains the field
         if (
             self.object_group_title is None
-            and "object_group_title" in self.__fields_set__
+            and "object_group_title" in self.model_fields_set
         ):
             _dict["object_group_title"] = None
 
         # set to None if auto_budget_amount (nullable) is None
-        # and __fields_set__ contains the field
+        # and model_fields_set contains the field
         if (
             self.auto_budget_amount is None
-            and "auto_budget_amount" in self.__fields_set__
+            and "auto_budget_amount" in self.model_fields_set
         ):
             _dict["auto_budget_amount"] = None
 
         # set to None if pc_auto_budget_amount (nullable) is None
-        # and __fields_set__ contains the field
+        # and model_fields_set contains the field
         if (
             self.pc_auto_budget_amount is None
-            and "pc_auto_budget_amount" in self.__fields_set__
+            and "pc_auto_budget_amount" in self.model_fields_set
         ):
             _dict["pc_auto_budget_amount"] = None
 
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: dict) -> BudgetProperties:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
         """Create an instance of BudgetProperties from a dict"""
         if obj is None:
             return None
 
         if not isinstance(obj, dict):
-            return BudgetProperties.parse_obj(obj)
+            return cls.model_validate(obj)
 
-        _obj = BudgetProperties.parse_obj(
+        _obj = cls.model_validate(
             {
                 "created_at": obj.get("created_at"),
                 "updated_at": obj.get("updated_at"),
@@ -286,7 +318,7 @@ class BudgetProperties(BaseModel):
                 "spent": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("spent")
+                        for _item in obj["spent"]
                     ]
                     if obj.get("spent") is not None
                     else None
@@ -294,7 +326,7 @@ class BudgetProperties(BaseModel):
                 "pc_spent": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("pc_spent")
+                        for _item in obj["pc_spent"]
                     ]
                     if obj.get("pc_spent") is not None
                     else None

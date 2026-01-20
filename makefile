@@ -7,7 +7,7 @@ openapi-gen: openapi-clean
 	  openapitools/openapi-generator-cli:latest \
 	  generate \
 	  -i /local/openapi/firefly-iii-6.4.14-v1.yaml \
-	  -g python-pydantic-v1 \
+	  -g python \
 	  -o /local/ff_iii_luciferin/openapi \
 	  --global-property=models,modelDocs=false,modelTests=false
 

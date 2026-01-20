@@ -19,21 +19,23 @@ import re  # noqa: F401
 import json
 
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, Field, StrictBool, StrictInt, StrictStr, conlist
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from openapi_client.models.array_entry_with_currency_and_sum import (
     ArrayEntryWithCurrencyAndSum,
 )
+from typing import Optional, Set
+from typing_extensions import Self
 
 
 class CategoryProperties(BaseModel):
     """
     CategoryProperties
-    """
+    """  # noqa: E501
 
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    name: StrictStr = Field(...)
+    name: StrictStr
     notes: Optional[StrictStr] = None
     object_has_currency_setting: Optional[StrictBool] = Field(
         default=None,
@@ -59,31 +61,31 @@ class CategoryProperties(BaseModel):
         default=None,
         description="The currency decimal places of the administration's primary currency.",
     )
-    spent: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = Field(
+    spent: Optional[List[ArrayEntryWithCurrencyAndSum]] = Field(
         default=None,
         description="Amount(s) spent in the currencies in the database for this category. ONLY present when start and date are set.",
     )
-    pc_spent: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = Field(
+    pc_spent: Optional[List[ArrayEntryWithCurrencyAndSum]] = Field(
         default=None,
         description="Amount(s) spent in the primary currency in the database for this category. ONLY present when start and date are set. ",
     )
-    earned: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = Field(
+    earned: Optional[List[ArrayEntryWithCurrencyAndSum]] = Field(
         default=None,
         description="Amount(s) earned in the currencies in the database for this category. ONLY present when start and date are set.",
     )
-    pc_earned: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = Field(
+    pc_earned: Optional[List[ArrayEntryWithCurrencyAndSum]] = Field(
         default=None,
         description="Amount(s) earned in the primary currency in the database for this category. ONLY present when start and date are set. ",
     )
-    transferred: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = Field(
+    transferred: Optional[List[ArrayEntryWithCurrencyAndSum]] = Field(
         default=None,
         description="Amount(s) transferred in the currencies in the database for this category. ONLY present when start and date are set. ",
     )
-    pc_transferred: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = Field(
+    pc_transferred: Optional[List[ArrayEntryWithCurrencyAndSum]] = Field(
         default=None,
         description="Amount(s) transferred in primary currency in the database for this category. ONLY present when start and date are set. ",
     )
-    __properties = [
+    __properties: ClassVar[List[str]] = [
         "created_at",
         "updated_at",
         "name",
@@ -102,30 +104,51 @@ class CategoryProperties(BaseModel):
         "pc_transferred",
     ]
 
-    class Config:
-        """Pydantic configuration"""
-
-        allow_population_by_field_name = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
     def to_str(self) -> str:
         """Returns the string representation of the model using alias"""
-        return pprint.pformat(self.dict(by_alias=True))
+        return pprint.pformat(self.model_dump(by_alias=True))
 
     def to_json(self) -> str:
         """Returns the JSON representation of the model using alias"""
+        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> CategoryProperties:
+    def from_json(cls, json_str: str) -> Optional[Self]:
         """Create an instance of CategoryProperties from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
-    def to_dict(self):
-        """Returns the dictionary representation of the model using alias"""
-        _dict = self.dict(
-            by_alias=True,
-            exclude={
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the dictionary representation of the model using alias.
+
+        This has the following differences from calling pydantic's
+        `self.model_dump(by_alias=True)`:
+
+        * `None` is only added to the output dict for nullable fields that
+          were set at model initialization. Other fields with value `None`
+          are ignored.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        """
+        excluded_fields: Set[str] = set(
+            [
                 "created_at",
                 "updated_at",
                 "primary_currency_id",
@@ -139,68 +162,73 @@ class CategoryProperties(BaseModel):
                 "pc_earned",
                 "transferred",
                 "pc_transferred",
-            },
+            ]
+        )
+
+        _dict = self.model_dump(
+            by_alias=True,
+            exclude=excluded_fields,
             exclude_none=True,
         )
         # override the default output from pydantic by calling `to_dict()` of each item in spent (list)
         _items = []
         if self.spent:
-            for _item in self.spent:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_spent in self.spent:
+                if _item_spent:
+                    _items.append(_item_spent.to_dict())
             _dict["spent"] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in pc_spent (list)
         _items = []
         if self.pc_spent:
-            for _item in self.pc_spent:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_pc_spent in self.pc_spent:
+                if _item_pc_spent:
+                    _items.append(_item_pc_spent.to_dict())
             _dict["pc_spent"] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in earned (list)
         _items = []
         if self.earned:
-            for _item in self.earned:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_earned in self.earned:
+                if _item_earned:
+                    _items.append(_item_earned.to_dict())
             _dict["earned"] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in pc_earned (list)
         _items = []
         if self.pc_earned:
-            for _item in self.pc_earned:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_pc_earned in self.pc_earned:
+                if _item_pc_earned:
+                    _items.append(_item_pc_earned.to_dict())
             _dict["pc_earned"] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in transferred (list)
         _items = []
         if self.transferred:
-            for _item in self.transferred:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_transferred in self.transferred:
+                if _item_transferred:
+                    _items.append(_item_transferred.to_dict())
             _dict["transferred"] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in pc_transferred (list)
         _items = []
         if self.pc_transferred:
-            for _item in self.pc_transferred:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_pc_transferred in self.pc_transferred:
+                if _item_pc_transferred:
+                    _items.append(_item_pc_transferred.to_dict())
             _dict["pc_transferred"] = _items
         # set to None if notes (nullable) is None
-        # and __fields_set__ contains the field
-        if self.notes is None and "notes" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.notes is None and "notes" in self.model_fields_set:
             _dict["notes"] = None
 
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: dict) -> CategoryProperties:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
         """Create an instance of CategoryProperties from a dict"""
         if obj is None:
             return None
 
         if not isinstance(obj, dict):
-            return CategoryProperties.parse_obj(obj)
+            return cls.model_validate(obj)
 
-        _obj = CategoryProperties.parse_obj(
+        _obj = cls.model_validate(
             {
                 "created_at": obj.get("created_at"),
                 "updated_at": obj.get("updated_at"),
@@ -217,7 +245,7 @@ class CategoryProperties(BaseModel):
                 "spent": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("spent")
+                        for _item in obj["spent"]
                     ]
                     if obj.get("spent") is not None
                     else None
@@ -225,7 +253,7 @@ class CategoryProperties(BaseModel):
                 "pc_spent": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("pc_spent")
+                        for _item in obj["pc_spent"]
                     ]
                     if obj.get("pc_spent") is not None
                     else None
@@ -233,7 +261,7 @@ class CategoryProperties(BaseModel):
                 "earned": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("earned")
+                        for _item in obj["earned"]
                     ]
                     if obj.get("earned") is not None
                     else None
@@ -241,7 +269,7 @@ class CategoryProperties(BaseModel):
                 "pc_earned": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("pc_earned")
+                        for _item in obj["pc_earned"]
                     ]
                     if obj.get("pc_earned") is not None
                     else None
@@ -249,7 +277,7 @@ class CategoryProperties(BaseModel):
                 "transferred": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("transferred")
+                        for _item in obj["transferred"]
                     ]
                     if obj.get("transferred") is not None
                     else None
@@ -257,7 +285,7 @@ class CategoryProperties(BaseModel):
                 "pc_transferred": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("pc_transferred")
+                        for _item in obj["pc_transferred"]
                     ]
                     if obj.get("pc_transferred") is not None
                     else None

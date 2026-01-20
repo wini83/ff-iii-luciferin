@@ -19,17 +19,19 @@ import re  # noqa: F401
 import json
 
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, Field, StrictBool, StrictInt, StrictStr, conlist
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from openapi_client.models.array_entry_with_currency_and_sum import (
     ArrayEntryWithCurrencyAndSum,
 )
+from typing import Optional, Set
+from typing_extensions import Self
 
 
 class AvailableBudgetProperties(BaseModel):
     """
     AvailableBudgetProperties
-    """
+    """  # noqa: E501
 
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -85,17 +87,17 @@ class AvailableBudgetProperties(BaseModel):
     end: Optional[datetime] = Field(
         default=None, description="End date of the available budget."
     )
-    spent_in_budgets: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = None
-    pc_spent_in_budgets: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = Field(
+    spent_in_budgets: Optional[List[ArrayEntryWithCurrencyAndSum]] = None
+    pc_spent_in_budgets: Optional[List[ArrayEntryWithCurrencyAndSum]] = Field(
         default=None,
         description="The amount spent in budgets in the primary currency (pc) of this administration. ",
     )
-    spent_outside_budgets: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = None
-    pc_spent_outside_budgets: Optional[conlist(ArrayEntryWithCurrencyAndSum)] = Field(
+    spent_outside_budgets: Optional[List[ArrayEntryWithCurrencyAndSum]] = None
+    pc_spent_outside_budgets: Optional[List[ArrayEntryWithCurrencyAndSum]] = Field(
         default=None,
         description="The amount spent outside of budgets in the primary currency (pc) of this administration. ",
     )
-    __properties = [
+    __properties: ClassVar[List[str]] = [
         "created_at",
         "updated_at",
         "object_has_currency_setting",
@@ -119,30 +121,52 @@ class AvailableBudgetProperties(BaseModel):
         "pc_spent_outside_budgets",
     ]
 
-    class Config:
-        """Pydantic configuration"""
-
-        allow_population_by_field_name = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
     def to_str(self) -> str:
         """Returns the string representation of the model using alias"""
-        return pprint.pformat(self.dict(by_alias=True))
+        return pprint.pformat(self.model_dump(by_alias=True))
 
     def to_json(self) -> str:
         """Returns the JSON representation of the model using alias"""
+        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> AvailableBudgetProperties:
+    def from_json(cls, json_str: str) -> Optional[Self]:
         """Create an instance of AvailableBudgetProperties from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
-    def to_dict(self):
-        """Returns the dictionary representation of the model using alias"""
-        _dict = self.dict(
-            by_alias=True,
-            exclude={
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the dictionary representation of the model using alias.
+
+        This has the following differences from calling pydantic's
+        `self.model_dump(by_alias=True)`:
+
+        * `None` is only added to the output dict for nullable fields that
+          were set at model initialization. Other fields with value `None`
+          are ignored.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        * OpenAPI `readOnly` fields are excluded.
+        """
+        excluded_fields: Set[str] = set(
+            [
                 "created_at",
                 "updated_at",
                 "object_has_currency_setting",
@@ -157,49 +181,54 @@ class AvailableBudgetProperties(BaseModel):
                 "pc_spent_in_budgets",
                 "spent_outside_budgets",
                 "pc_spent_outside_budgets",
-            },
+            ]
+        )
+
+        _dict = self.model_dump(
+            by_alias=True,
+            exclude=excluded_fields,
             exclude_none=True,
         )
         # override the default output from pydantic by calling `to_dict()` of each item in spent_in_budgets (list)
         _items = []
         if self.spent_in_budgets:
-            for _item in self.spent_in_budgets:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_spent_in_budgets in self.spent_in_budgets:
+                if _item_spent_in_budgets:
+                    _items.append(_item_spent_in_budgets.to_dict())
             _dict["spent_in_budgets"] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in pc_spent_in_budgets (list)
         _items = []
         if self.pc_spent_in_budgets:
-            for _item in self.pc_spent_in_budgets:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_pc_spent_in_budgets in self.pc_spent_in_budgets:
+                if _item_pc_spent_in_budgets:
+                    _items.append(_item_pc_spent_in_budgets.to_dict())
             _dict["pc_spent_in_budgets"] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in spent_outside_budgets (list)
         _items = []
         if self.spent_outside_budgets:
-            for _item in self.spent_outside_budgets:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_spent_outside_budgets in self.spent_outside_budgets:
+                if _item_spent_outside_budgets:
+                    _items.append(_item_spent_outside_budgets.to_dict())
             _dict["spent_outside_budgets"] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in pc_spent_outside_budgets (list)
         _items = []
         if self.pc_spent_outside_budgets:
-            for _item in self.pc_spent_outside_budgets:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_pc_spent_outside_budgets in self.pc_spent_outside_budgets:
+                if _item_pc_spent_outside_budgets:
+                    _items.append(_item_pc_spent_outside_budgets.to_dict())
             _dict["pc_spent_outside_budgets"] = _items
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: dict) -> AvailableBudgetProperties:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
         """Create an instance of AvailableBudgetProperties from a dict"""
         if obj is None:
             return None
 
         if not isinstance(obj, dict):
-            return AvailableBudgetProperties.parse_obj(obj)
+            return cls.model_validate(obj)
 
-        _obj = AvailableBudgetProperties.parse_obj(
+        _obj = cls.model_validate(
             {
                 "created_at": obj.get("created_at"),
                 "updated_at": obj.get("updated_at"),
@@ -223,7 +252,7 @@ class AvailableBudgetProperties(BaseModel):
                 "spent_in_budgets": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("spent_in_budgets")
+                        for _item in obj["spent_in_budgets"]
                     ]
                     if obj.get("spent_in_budgets") is not None
                     else None
@@ -231,7 +260,7 @@ class AvailableBudgetProperties(BaseModel):
                 "pc_spent_in_budgets": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("pc_spent_in_budgets")
+                        for _item in obj["pc_spent_in_budgets"]
                     ]
                     if obj.get("pc_spent_in_budgets") is not None
                     else None
@@ -239,7 +268,7 @@ class AvailableBudgetProperties(BaseModel):
                 "spent_outside_budgets": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("spent_outside_budgets")
+                        for _item in obj["spent_outside_budgets"]
                     ]
                     if obj.get("spent_outside_budgets") is not None
                     else None
@@ -247,7 +276,7 @@ class AvailableBudgetProperties(BaseModel):
                 "pc_spent_outside_budgets": (
                     [
                         ArrayEntryWithCurrencyAndSum.from_dict(_item)
-                        for _item in obj.get("pc_spent_outside_budgets")
+                        for _item in obj["pc_spent_outside_budgets"]
                     ]
                     if obj.get("pc_spent_outside_budgets") is not None
                     else None

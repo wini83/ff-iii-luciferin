@@ -13,10 +13,10 @@ Do not edit the class manually.
 """  # noqa: E501
 
 
+from __future__ import annotations
 import json
-import pprint
-import re  # noqa: F401
-from aenum import Enum, no_arg
+from enum import Enum
+from typing_extensions import Self
 
 
 class AttachableType(str, Enum):
@@ -35,6 +35,6 @@ class AttachableType(str, Enum):
     TAG = "Tag"
 
     @classmethod
-    def from_json(cls, json_str: str) -> AttachableType:
+    def from_json(cls, json_str: str) -> Self:
         """Create an instance of AttachableType from a JSON string"""
-        return AttachableType(json.loads(json_str))
+        return cls(json.loads(json_str))

@@ -18,50 +18,44 @@ import pprint
 import re  # noqa: F401
 import json
 
-
-from typing import Optional
-from pydantic import BaseModel, Field, StrictBool, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
+from typing import Optional, Set
+from typing_extensions import Self
 
 
 class AutocompleteAccount(BaseModel):
     """
     AutocompleteAccount
-    """
+    """  # noqa: E501
 
-    id: StrictStr = Field(...)
+    id: StrictStr
     name: StrictStr = Field(
-        default=..., description="Name of the account found by an auto-complete search."
+        description="Name of the account found by an auto-complete search."
     )
     name_with_balance: StrictStr = Field(
-        default=...,
-        description="Asset accounts and liabilities have a second field with the given date's account balance in the account currency or primary currency.",
+        description="Asset accounts and liabilities have a second field with the given date's account balance in the account currency or primary currency."
     )
     active: Optional[StrictBool] = Field(
         default=None, description="Is the bill active or not?"
     )
     type: StrictStr = Field(
-        default=...,
-        description="Account type of the account found by the auto-complete search.",
+        description="Account type of the account found by the auto-complete search."
     )
     currency_id: StrictStr = Field(
-        default=...,
-        description="ID for the currency used by this account. If the user prefers amounts converted to their primary currency, this primary currency is used instead.",
+        description="ID for the currency used by this account. If the user prefers amounts converted to their primary currency, this primary currency is used instead."
     )
     currency_name: StrictStr = Field(
-        default=...,
-        description="Currency name for the currency used by this account. If the user prefers amounts converted to their primary currency, this primary currency is used instead.",
+        description="Currency name for the currency used by this account. If the user prefers amounts converted to their primary currency, this primary currency is used instead."
     )
     currency_code: StrictStr = Field(
-        default=...,
-        description="Currency code for the currency used by this account. If the user prefers amounts converted to their primary currency, this primary currency is used instead.",
+        description="Currency code for the currency used by this account. If the user prefers amounts converted to their primary currency, this primary currency is used instead."
     )
     currency_symbol: StrictStr = Field(
-        default=...,
-        description="Currency symbol for the currency used by this account. If the user prefers amounts converted to their primary currency, this primary currency is used instead.",
+        description="Currency symbol for the currency used by this account. If the user prefers amounts converted to their primary currency, this primary currency is used instead."
     )
     currency_decimal_places: StrictInt = Field(
-        default=...,
-        description="Number of decimal places for the currency used by this account. If the user prefers amounts converted to their primary currency, this primary currency is used instead.",
+        description="Number of decimal places for the currency used by this account. If the user prefers amounts converted to their primary currency, this primary currency is used instead."
     )
     account_currency_id: Optional[StrictStr] = Field(
         default=None,
@@ -83,7 +77,7 @@ class AutocompleteAccount(BaseModel):
         default=None,
         description='Number of decimal places for the currency used by this account. Even if "convertToPrimary" is on, the account currency code is displayed here.',
     )
-    __properties = [
+    __properties: ClassVar[List[str]] = [
         "id",
         "name",
         "name_with_balance",
@@ -101,40 +95,55 @@ class AutocompleteAccount(BaseModel):
         "account_currency_decimal_places",
     ]
 
-    class Config:
-        """Pydantic configuration"""
-
-        allow_population_by_field_name = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
     def to_str(self) -> str:
         """Returns the string representation of the model using alias"""
-        return pprint.pformat(self.dict(by_alias=True))
+        return pprint.pformat(self.model_dump(by_alias=True))
 
     def to_json(self) -> str:
         """Returns the JSON representation of the model using alias"""
+        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> AutocompleteAccount:
+    def from_json(cls, json_str: str) -> Optional[Self]:
         """Create an instance of AutocompleteAccount from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
-    def to_dict(self):
-        """Returns the dictionary representation of the model using alias"""
-        _dict = self.dict(by_alias=True, exclude={}, exclude_none=True)
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the dictionary representation of the model using alias.
+
+        This has the following differences from calling pydantic's
+        `self.model_dump(by_alias=True)`:
+
+        * `None` is only added to the output dict for nullable fields that
+          were set at model initialization. Other fields with value `None`
+          are ignored.
+        """
+        excluded_fields: Set[str] = set([])
+
+        _dict = self.model_dump(
+            by_alias=True,
+            exclude=excluded_fields,
+            exclude_none=True,
+        )
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: dict) -> AutocompleteAccount:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
         """Create an instance of AutocompleteAccount from a dict"""
         if obj is None:
             return None
 
         if not isinstance(obj, dict):
-            return AutocompleteAccount.parse_obj(obj)
+            return cls.model_validate(obj)
 
-        _obj = AutocompleteAccount.parse_obj(
+        _obj = cls.model_validate(
             {
                 "id": obj.get("id"),
                 "name": obj.get("name"),

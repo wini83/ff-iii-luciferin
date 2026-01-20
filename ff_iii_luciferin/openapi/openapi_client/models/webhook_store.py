@@ -18,67 +18,97 @@ import pprint
 import re  # noqa: F401
 import json
 
-
-from typing import List, Optional
-from pydantic import BaseModel, Field, StrictBool, StrictStr, conlist
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
+from typing_extensions import Annotated
 from openapi_client.models.webhook_delivery import WebhookDelivery
 from openapi_client.models.webhook_response import WebhookResponse
 from openapi_client.models.webhook_trigger import WebhookTrigger
+from typing import Optional, Set
+from typing_extensions import Self
 
 
 class WebhookStore(BaseModel):
     """
     WebhookStore
-    """
+    """  # noqa: E501
 
     active: Optional[StrictBool] = Field(
         default=None, description="Boolean to indicate if the webhook is active"
     )
     title: StrictStr = Field(
-        default=..., description="A title for the webhook for easy recognition."
+        description="A title for the webhook for easy recognition."
     )
-    triggers: Optional[conlist(WebhookTrigger, max_items=3, min_items=1)] = None
-    responses: Optional[conlist(WebhookResponse, max_items=1, min_items=1)] = None
-    deliveries: Optional[conlist(WebhookDelivery, max_items=1, min_items=1)] = None
+    triggers: Optional[
+        Annotated[List[WebhookTrigger], Field(min_length=1, max_length=3)]
+    ] = None
+    responses: Optional[
+        Annotated[List[WebhookResponse], Field(min_length=1, max_length=1)]
+    ] = None
+    deliveries: Optional[
+        Annotated[List[WebhookDelivery], Field(min_length=1, max_length=1)]
+    ] = None
     url: StrictStr = Field(
-        default=..., description="The URL of the webhook. Has to start with `https`."
+        description="The URL of the webhook. Has to start with `https`."
     )
-    __properties = ["active", "title", "triggers", "responses", "deliveries", "url"]
+    __properties: ClassVar[List[str]] = [
+        "active",
+        "title",
+        "triggers",
+        "responses",
+        "deliveries",
+        "url",
+    ]
 
-    class Config:
-        """Pydantic configuration"""
-
-        allow_population_by_field_name = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
     def to_str(self) -> str:
         """Returns the string representation of the model using alias"""
-        return pprint.pformat(self.dict(by_alias=True))
+        return pprint.pformat(self.model_dump(by_alias=True))
 
     def to_json(self) -> str:
         """Returns the JSON representation of the model using alias"""
+        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> WebhookStore:
+    def from_json(cls, json_str: str) -> Optional[Self]:
         """Create an instance of WebhookStore from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
-    def to_dict(self):
-        """Returns the dictionary representation of the model using alias"""
-        _dict = self.dict(by_alias=True, exclude={}, exclude_none=True)
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the dictionary representation of the model using alias.
+
+        This has the following differences from calling pydantic's
+        `self.model_dump(by_alias=True)`:
+
+        * `None` is only added to the output dict for nullable fields that
+          were set at model initialization. Other fields with value `None`
+          are ignored.
+        """
+        excluded_fields: Set[str] = set([])
+
+        _dict = self.model_dump(
+            by_alias=True,
+            exclude=excluded_fields,
+            exclude_none=True,
+        )
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: dict) -> WebhookStore:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
         """Create an instance of WebhookStore from a dict"""
         if obj is None:
             return None
 
         if not isinstance(obj, dict):
-            return WebhookStore.parse_obj(obj)
+            return cls.model_validate(obj)
 
-        _obj = WebhookStore.parse_obj(
+        _obj = cls.model_validate(
             {
                 "active": obj.get("active"),
                 "title": obj.get("title"),

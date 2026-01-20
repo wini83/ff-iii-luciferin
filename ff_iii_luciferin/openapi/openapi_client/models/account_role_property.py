@@ -13,10 +13,10 @@ Do not edit the class manually.
 """  # noqa: E501
 
 
+from __future__ import annotations
 import json
-import pprint
-import re  # noqa: F401
-from aenum import Enum, no_arg
+from enum import Enum
+from typing_extensions import Self
 
 
 class AccountRoleProperty(str, Enum):
@@ -34,6 +34,6 @@ class AccountRoleProperty(str, Enum):
     CASHWALLETASSET = "cashWalletAsset"
 
     @classmethod
-    def from_json(cls, json_str: str) -> AccountRoleProperty:
+    def from_json(cls, json_str: str) -> Self:
         """Create an instance of AccountRoleProperty from a JSON string"""
-        return AccountRoleProperty(json.loads(json_str))
+        return cls(json.loads(json_str))

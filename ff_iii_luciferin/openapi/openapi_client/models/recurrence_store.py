@@ -19,33 +19,33 @@ import re  # noqa: F401
 import json
 
 from datetime import date
-from typing import List, Optional
-from pydantic import BaseModel, Field, StrictBool, StrictInt, StrictStr, conlist
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from openapi_client.models.recurrence_repetition_store import RecurrenceRepetitionStore
 from openapi_client.models.recurrence_transaction_store import (
     RecurrenceTransactionStore,
 )
 from openapi_client.models.recurrence_transaction_type import RecurrenceTransactionType
+from typing import Optional, Set
+from typing_extensions import Self
 
 
 class RecurrenceStore(BaseModel):
     """
     RecurrenceStore
-    """
+    """  # noqa: E501
 
-    type: RecurrenceTransactionType = Field(...)
-    title: StrictStr = Field(...)
+    type: RecurrenceTransactionType
+    title: StrictStr
     description: Optional[StrictStr] = Field(
         default=None,
         description="Not to be confused with the description of the actual transaction(s) being created.",
     )
     first_date: date = Field(
-        default=...,
-        description="First time the recurring transaction will fire. Must be after today.",
+        description="First time the recurring transaction will fire. Must be after today."
     )
     repeat_until: Optional[date] = Field(
-        default=...,
-        description="Date until the recurring transaction can fire. Use either this field or repetitions.",
+        description="Date until the recurring transaction can fire. Use either this field or repetitions."
     )
     nr_of_repetitions: Optional[StrictInt] = Field(
         default=None,
@@ -59,9 +59,9 @@ class RecurrenceStore(BaseModel):
         default=None, description="If the recurrence is even active."
     )
     notes: Optional[StrictStr] = None
-    repetitions: conlist(RecurrenceRepetitionStore) = Field(...)
-    transactions: conlist(RecurrenceTransactionStore) = Field(...)
-    __properties = [
+    repetitions: List[RecurrenceRepetitionStore]
+    transactions: List[RecurrenceTransactionStore]
+    __properties: ClassVar[List[str]] = [
         "type",
         "title",
         "description",
@@ -75,72 +75,87 @@ class RecurrenceStore(BaseModel):
         "transactions",
     ]
 
-    class Config:
-        """Pydantic configuration"""
-
-        allow_population_by_field_name = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
     def to_str(self) -> str:
         """Returns the string representation of the model using alias"""
-        return pprint.pformat(self.dict(by_alias=True))
+        return pprint.pformat(self.model_dump(by_alias=True))
 
     def to_json(self) -> str:
         """Returns the JSON representation of the model using alias"""
+        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> RecurrenceStore:
+    def from_json(cls, json_str: str) -> Optional[Self]:
         """Create an instance of RecurrenceStore from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
-    def to_dict(self):
-        """Returns the dictionary representation of the model using alias"""
-        _dict = self.dict(by_alias=True, exclude={}, exclude_none=True)
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the dictionary representation of the model using alias.
+
+        This has the following differences from calling pydantic's
+        `self.model_dump(by_alias=True)`:
+
+        * `None` is only added to the output dict for nullable fields that
+          were set at model initialization. Other fields with value `None`
+          are ignored.
+        """
+        excluded_fields: Set[str] = set([])
+
+        _dict = self.model_dump(
+            by_alias=True,
+            exclude=excluded_fields,
+            exclude_none=True,
+        )
         # override the default output from pydantic by calling `to_dict()` of each item in repetitions (list)
         _items = []
         if self.repetitions:
-            for _item in self.repetitions:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_repetitions in self.repetitions:
+                if _item_repetitions:
+                    _items.append(_item_repetitions.to_dict())
             _dict["repetitions"] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in transactions (list)
         _items = []
         if self.transactions:
-            for _item in self.transactions:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_transactions in self.transactions:
+                if _item_transactions:
+                    _items.append(_item_transactions.to_dict())
             _dict["transactions"] = _items
         # set to None if repeat_until (nullable) is None
-        # and __fields_set__ contains the field
-        if self.repeat_until is None and "repeat_until" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.repeat_until is None and "repeat_until" in self.model_fields_set:
             _dict["repeat_until"] = None
 
         # set to None if nr_of_repetitions (nullable) is None
-        # and __fields_set__ contains the field
+        # and model_fields_set contains the field
         if (
             self.nr_of_repetitions is None
-            and "nr_of_repetitions" in self.__fields_set__
+            and "nr_of_repetitions" in self.model_fields_set
         ):
             _dict["nr_of_repetitions"] = None
 
         # set to None if notes (nullable) is None
-        # and __fields_set__ contains the field
-        if self.notes is None and "notes" in self.__fields_set__:
+        # and model_fields_set contains the field
+        if self.notes is None and "notes" in self.model_fields_set:
             _dict["notes"] = None
 
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: dict) -> RecurrenceStore:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
         """Create an instance of RecurrenceStore from a dict"""
         if obj is None:
             return None
 
         if not isinstance(obj, dict):
-            return RecurrenceStore.parse_obj(obj)
+            return cls.model_validate(obj)
 
-        _obj = RecurrenceStore.parse_obj(
+        _obj = cls.model_validate(
             {
                 "type": obj.get("type"),
                 "title": obj.get("title"),
@@ -154,7 +169,7 @@ class RecurrenceStore(BaseModel):
                 "repetitions": (
                     [
                         RecurrenceRepetitionStore.from_dict(_item)
-                        for _item in obj.get("repetitions")
+                        for _item in obj["repetitions"]
                     ]
                     if obj.get("repetitions") is not None
                     else None
@@ -162,7 +177,7 @@ class RecurrenceStore(BaseModel):
                 "transactions": (
                     [
                         RecurrenceTransactionStore.from_dict(_item)
-                        for _item in obj.get("transactions")
+                        for _item in obj["transactions"]
                     ]
                     if obj.get("transactions") is not None
                     else None
