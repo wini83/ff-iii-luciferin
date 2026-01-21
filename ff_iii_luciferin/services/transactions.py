@@ -1,7 +1,6 @@
 import time
 from dataclasses import dataclass
 from datetime import date
-from typing import List
 
 from ff_iii_luciferin.api import FireflyClient
 from ff_iii_luciferin.domain.models import SimplifiedTx
@@ -10,7 +9,7 @@ from ff_iii_luciferin.domain.models import SimplifiedTx
 def build_add_tag_payload(
     tx: SimplifiedTx,
     tag: str,
-) -> List[str]:
+) -> list[str]:
     tags = list(tx.tags)
 
     if tag not in tags:

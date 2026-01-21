@@ -41,3 +41,7 @@ openapi-postgen:
 cmt:
 	uv run uv run pre-commit run --all-files
 	uv run cz commit
+
+ruff:
+	uv run ruff check . --fix
+	uv run ruff format .

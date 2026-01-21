@@ -1,8 +1,7 @@
 from decimal import Decimal, InvalidOperation
-from typing import Optional
 
 
-def parse_int(value: object) -> Optional[int]:
+def parse_int(value: object) -> int | None:
     if value is None:
         return None
     if isinstance(value, int):
@@ -18,7 +17,7 @@ def parse_int(value: object) -> Optional[int]:
     return None
 
 
-def parse_decimal(value: object) -> Optional[Decimal]:
+def parse_decimal(value: object) -> Decimal | None:
     if value is None:
         return None
 

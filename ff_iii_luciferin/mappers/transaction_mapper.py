@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import Literal
 
 from ff_iii_luciferin.domain.models import SimplifiedTx
 from ff_iii_luciferin.mappers.utils import parse_decimal, parse_int

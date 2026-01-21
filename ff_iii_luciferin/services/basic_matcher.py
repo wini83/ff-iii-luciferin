@@ -10,6 +10,3 @@ def match(
     records: Iterable[SimplifiedItem],
 ) -> list[SimplifiedItem]:
     return [r for r in records if r == tx]
-
-
-1

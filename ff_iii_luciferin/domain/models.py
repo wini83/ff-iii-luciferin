@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import List
 
 
 @dataclass(eq=False)
@@ -21,7 +20,7 @@ class SimplifiedTx(SimplifiedItem):
 
     id: int
     description: str
-    tags: List[str]
+    tags: list[str]
     notes: str | None
     category: str | None
 

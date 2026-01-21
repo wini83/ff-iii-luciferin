@@ -1,10 +1,11 @@
 """Unit tests for FireflyClient class."""
 
 import asyncio
+from collections.abc import Iterable
 from datetime import date, datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import Any, Dict, Iterable, List
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -24,11 +25,11 @@ def _transaction_split_payload(
     *,
     amount: str = "10.00",
     date: str = "2025-01-01T00:00:00+00:00",
-    tags: List[str] | None = None,
+    tags: list[str] | None = None,
     notes: str | None = None,
     category_id: str | None = None,
     category_name: str | None = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {
         "type": "withdrawal",
         "date": date,
@@ -44,8 +45,8 @@ def _transaction_split_payload(
 
 
 def _transaction_read_payload(
-    tx_id: str, split_payloads: Iterable[Dict[str, Any]]
-) -> Dict[str, Any]:
+    tx_id: str, split_payloads: Iterable[dict[str, Any]]
+) -> dict[str, Any]:
     return {
         "type": "transactions",
         "id": tx_id,
@@ -55,8 +56,8 @@ def _transaction_read_payload(
 
 
 def _transaction_array_response(
-    tx_ids: List[str], next_link: str | None
-) -> Dict[str, Any]:
+    tx_ids: list[str], next_link: str | None
+) -> dict[str, Any]:
     splits = [_transaction_split_payload(f"tx-{tx_id}") for tx_id in tx_ids]
     data = [
         _transaction_read_payload(tx_id, [split])
@@ -70,20 +71,20 @@ def _transaction_array_response(
 
 
 def _transaction_single_response(
-    tx_id: str, split_payload: Dict[str, Any]
-) -> Dict[str, Any]:
+    tx_id: str, split_payload: dict[str, Any]
+) -> dict[str, Any]:
     return {"data": _transaction_read_payload(tx_id, [split_payload])}
 
 
-def _category_read_payload(category_id: str, name: str) -> Dict[str, Any]:
+def _category_read_payload(category_id: str, name: str) -> dict[str, Any]:
     return {"type": "categories", "id": category_id, "attributes": {"name": name}}
 
 
 def _category_array_response(
-    category_ids: List[str],
+    category_ids: list[str],
     current_page: int,
     total_pages: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     data = [
         _category_read_payload(category_id, f"Category {category_id}")
         for category_id in category_ids
@@ -247,7 +248,7 @@ def test_get_transaction_invalid_dto_raises(mock_request: MagicMock) -> None:
 def test_update_transaction_fields(
     mock_request: MagicMock,
     update: TransactionUpdate,
-    expected_patch: Dict[str, Any],
+    expected_patch: dict[str, Any],
 ) -> None:
     """Test updating single fields on a transaction."""
     updated = _transaction_split_payload(
@@ -505,12 +506,12 @@ def test_fetch_categories_uses_links_when_pagination_missing() -> None:
 class MockResponse:
     """Generic mock response for testing purposes."""
 
-    def __init__(self, json_data: Dict[str, Any]) -> None:
+    def __init__(self, json_data: dict[str, Any]) -> None:
         """Initialize with mock JSON data."""
         self._json = json_data
         self.status_code: int = 200
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Return mocked JSON content."""
         return self._json
 
@@ -524,7 +525,7 @@ class MockBadJsonResponse:
 
     status_code = 200
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         raise ValueError("invalid json")
 
     def raise_for_status(self) -> None:

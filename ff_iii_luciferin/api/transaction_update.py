@@ -1,10 +1,9 @@
 from dataclasses import dataclass
-from typing import List, Optional
 
 
 @dataclass
 class TransactionUpdate:
-    description: Optional[str] = None
-    notes: Optional[str] = None
-    tags: Optional[List[str]] = None
-    category_id: Optional[int] = None
+    description: str | None = None
+    notes: str | None = None
+    tags: list[str] | None = None
+    category_id: int | None = None
