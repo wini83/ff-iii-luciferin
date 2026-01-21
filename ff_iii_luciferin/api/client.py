@@ -1,8 +1,9 @@
 """Utility client for interacting with the Firefly III API."""
 
 import logging
+from collections.abc import AsyncIterator
 from datetime import date
-from typing import Any, AsyncIterator, List
+from typing import Any
 
 import httpx
 
@@ -164,12 +165,12 @@ class FireflyClient:
 
     async def fetch_categories(
         self, limit: int = 1000, simplified: bool = False
-    ) -> List[SimplifiedCategory]:
+    ) -> list[SimplifiedCategory]:
         """Retrieve categories from Firefly III."""
         url = f"{self.base_url}/api/v1/categories"
         params: dict[str, Any] = {"limit": limit}
         page = 1
-        categories: List[SimplifiedCategory] = []
+        categories: list[SimplifiedCategory] = []
 
         while True:
             params["page"] = page

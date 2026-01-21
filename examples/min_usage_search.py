@@ -6,6 +6,7 @@ import logging
 from settings_min import settings
 
 from ff_iii_luciferin.api import FireflyClient
+from ff_iii_luciferin.domain.formatters import format_amount
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,10 +15,12 @@ async def main() -> None:
     # Initialize Firefly III client with credentials
     firefly = FireflyClient(base_url=settings.firefly_url, token=settings.firefly_token)
     try:
-        transactions = await firefly.fetch_transactions()
+        transactions = await firefly.fetch_transactions(max_pages=1)
         logging.info("Fetched %s transactions", len(transactions))
         for tx in transactions[:20]:
-            logging.info(f"TX {tx.id} - {tx.amount} - {tx.date} ; {tx.description}, ")
+            amount_str = f"{format_amount(tx.amount, tx.currency.decimals)}"
+            tx_amount = f"{amount_str} {tx.currency.symbol}"
+            logging.info(f"TX {tx.id} - {tx_amount} - {tx.date} ; {tx.description},")
     finally:
         await firefly.close()
     uncategorized = [tx for tx in transactions if tx.category is None]

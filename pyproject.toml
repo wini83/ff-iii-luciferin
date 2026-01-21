@@ -53,8 +53,22 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N"]
-ignore = ["N818"]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "I",   # isort
+  "N",   # pep8-naming
+
+  "B",   # flake8-bugbear (real bugs)
+  "UP",  # pyupgrade (modern Python)
+  "SIM", # flake8-simplify
+  "C4",  # flake8-comprehensions
+  "T20", # print / breakpoint
+]
+
+ignore = [
+  "N818",  # Error suffix for exceptions – świadomie
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -102,7 +116,8 @@ dev = [
     "mypy",
     "commitizen",
     "python-dotenv",
-    "black"
+    "black",
+    "debugpy>=1.8.19",
 ]
 
 # --------------------

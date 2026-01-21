@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import List
+from enum import Enum
 
 
 @dataclass(eq=False)
@@ -15,15 +15,23 @@ class SimplifiedItem:
         return self.date == other.date and abs(self.amount) == abs(other.amount)
 
 
-@dataclass
-class SimplifiedTx(SimplifiedItem):
-    """Simplified representation of a Firefly III transaction."""
+class TxType(str, Enum):
+    WITHDRAWAL = "withdrawal"
+    DEPOSIT = "deposit"
+    TRANSFER = "transfer"
 
-    id: int
-    description: str
-    tags: List[str]
-    notes: str | None
-    category: str | None
+
+@dataclass(slots=True, frozen=True)
+class Currency:
+    code: str  # "EUR"
+    symbol: str  # "€"
+    decimals: int  # 2
+
+
+@dataclass(slots=True, frozen=True)
+class FXContext:
+    original_currency: Currency
+    original_amount: Decimal
 
 
 @dataclass
@@ -32,3 +40,17 @@ class SimplifiedCategory:
 
     id: int
     name: str
+
+
+@dataclass
+class SimplifiedTx(SimplifiedItem):
+    """Simplified representation of a Firefly III transaction."""
+
+    id: int
+    description: str
+    tags: list[str]
+    notes: str | None
+    category: SimplifiedCategory | None
+    currency: Currency
+    fx: FXContext | None
+    type: TxType
