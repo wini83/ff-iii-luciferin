@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from types import SimpleNamespace
 
 from ff_iii_luciferin.api.openapi_types import (
     TransactionTypeProperty,
@@ -92,3 +93,35 @@ def test_map_transaction_rejects_multi_split() -> None:
     result = map_transaction(tx_read)
     assert result.tx is None
     assert result.reason == "multipart"
+
+
+def test_map_transaction_rejects_missing_date() -> None:
+    tx_read = SimpleNamespace(
+        id="123",
+        attributes=SimpleNamespace(
+            transactions=[SimpleNamespace(var_date=None)],
+        ),
+    )
+
+    result = map_transaction(tx_read)
+    assert result.tx is None
+    assert result.reason == "invalid"
+
+
+def test_map_transaction_rejects_invalid_id() -> None:
+    split = SimpleNamespace(
+        var_date=datetime(2025, 1, 1),
+        amount="10.00",
+        description="Test",
+        tags=[],
+        notes=None,
+        category_name=None,
+    )
+    tx_read = SimpleNamespace(
+        id="not-an-int",
+        attributes=SimpleNamespace(transactions=[split]),
+    )
+
+    result = map_transaction(tx_read)
+    assert result.tx is None
+    assert result.reason == "invalid"

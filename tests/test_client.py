@@ -1,14 +1,19 @@
 """Unit tests for FireflyClient class."""
 
 import asyncio
+from datetime import date, datetime
+from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any, Dict, Iterable, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from ff_iii_luciferin.api import FireflyAPIError, FireflyClient
 from ff_iii_luciferin.api.transaction_update import TransactionUpdate
 from ff_iii_luciferin.domain.models import SimplifiedCategory, SimplifiedTx
+from ff_iii_luciferin.mappers.transaction_mapper import TransactionMapResult
 
 BASE_URL = "https://demo.firefly.local"
 TOKEN = "test-token"
@@ -269,6 +274,234 @@ def test_update_transaction_fields(
     }
 
 
+def test_update_transaction_empty_payload_raises() -> None:
+    async def run() -> None:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            await client.update_transaction(123, TransactionUpdate())
+        finally:
+            await client.close()
+
+    with pytest.raises(ValueError, match="Transaction update payload is empty"):
+        asyncio.run(run())
+
+
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_request_json_parse_error(mock_request: MagicMock) -> None:
+    mock_request.return_value = MockBadJsonResponse()
+
+    async def run() -> None:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            await client._request("get", f"{BASE_URL}/broken")
+        finally:
+            await client.close()
+
+    with pytest.raises(FireflyAPIError, match="Failed to parse JSON response") as exc:
+        asyncio.run(run())
+    assert exc.value.status_code == 200
+
+
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_request_timeout_error(mock_request: MagicMock) -> None:
+    request = httpx.Request("GET", f"{BASE_URL}/timeout")
+    mock_request.side_effect = httpx.ReadTimeout("timeout", request=request)
+
+    async def run() -> None:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            await client._request("get", f"{BASE_URL}/timeout")
+        finally:
+            await client.close()
+
+    with pytest.raises(FireflyAPIError, match="Request timed out: GET") as exc:
+        asyncio.run(run())
+    assert exc.value.status_code is None
+
+
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_request_http_status_error(mock_request: MagicMock) -> None:
+    request = httpx.Request("GET", f"{BASE_URL}/status")
+    response = httpx.Response(503, request=request)
+    mock_request.side_effect = httpx.HTTPStatusError(
+        "boom", request=request, response=response
+    )
+
+    async def run() -> None:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            await client._request("get", f"{BASE_URL}/status")
+        finally:
+            await client.close()
+
+    with pytest.raises(FireflyAPIError, match="HTTP error:") as exc:
+        asyncio.run(run())
+    assert exc.value.status_code == 503
+
+
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_request_request_error(mock_request: MagicMock) -> None:
+    request = httpx.Request("GET", f"{BASE_URL}/boom")
+    mock_request.side_effect = httpx.RequestError("boom", request=request)
+
+    async def run() -> None:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            await client._request("get", f"{BASE_URL}/boom")
+        finally:
+            await client.close()
+
+    with pytest.raises(FireflyAPIError, match="Request failed:") as exc:
+        asyncio.run(run())
+    assert exc.value.status_code is None
+
+
+def test_fetch_transactions_skips_invalid_and_multipart() -> None:
+    tx = SimplifiedTx(
+        id=1,
+        description="ok",
+        amount=Decimal("1.00"),
+        date=datetime(2025, 1, 1).date(),
+        tags=[],
+        notes=None,
+        category=None,
+    )
+
+    async def _gen(self: FireflyClient, **_: Any) -> Any:
+        yield TransactionMapResult(tx=tx, reason=None)
+        yield TransactionMapResult(tx=None, reason="multipart")
+        yield TransactionMapResult(tx=None, reason="invalid")
+
+    async def run() -> list[SimplifiedTx]:
+        with patch.object(FireflyClient, "_iter_transaction_map_results", _gen):
+            client = FireflyClient(BASE_URL, TOKEN)
+            try:
+                return await client.fetch_transactions()
+            finally:
+                await client.close()
+
+    result = asyncio.run(run())
+    assert result == [tx]
+
+
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_iter_transactions_honors_max_pages(mock_request: MagicMock) -> None:
+    async def run() -> list[TransactionMapResult]:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            return [
+                result
+                async for result in client._iter_transaction_map_results(max_pages=0)
+            ]
+        finally:
+            await client.close()
+
+    result = asyncio.run(run())
+    assert result == []
+    mock_request.assert_not_called()
+
+
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_iter_transactions_empty_page_breaks(mock_request: MagicMock) -> None:
+    mock_request.return_value = MockResponse(_transaction_array_response([], None))
+
+    async def run() -> list[TransactionMapResult]:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            return [result async for result in client._iter_transaction_map_results()]
+        finally:
+            await client.close()
+
+    result = asyncio.run(run())
+    assert result == []
+    assert mock_request.call_count == 1
+
+
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_iter_transactions_includes_start_end_params(
+    mock_request: MagicMock,
+) -> None:
+    mock_request.return_value = MockResponse(_transaction_array_response([], None))
+    start = date(2025, 1, 2)
+    end = date(2025, 1, 3)
+
+    async def run() -> None:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            async for _ in client._iter_transaction_map_results(
+                start_date=start, end_date=end
+            ):
+                pass
+        finally:
+            await client.close()
+
+    asyncio.run(run())
+    params = mock_request.call_args.kwargs["params"]
+    assert params["start"] == "2025-01-02"
+    assert params["end"] == "2025-01-03"
+
+
+def test_fetch_categories_uses_links_when_pagination_missing() -> None:
+    category_1 = SimpleNamespace(id="1", attributes=SimpleNamespace(name="Cat 1"))
+    category_2 = SimpleNamespace(id="2", attributes=SimpleNamespace(name="Cat 2"))
+
+    async def run() -> list[SimplifiedCategory]:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            with (
+                patch.object(
+                    client,
+                    "_request",
+                    AsyncMock(
+                        side_effect=[
+                            {"links": {"next": "next"}},
+                            {"links": {}},
+                        ]
+                    ),
+                ),
+                patch(
+                    "ff_iii_luciferin.api.client.validate_response_category_array",
+                    side_effect=[
+                        SimpleNamespace(
+                            data=[category_1],
+                            meta=SimpleNamespace(pagination=None),
+                        ),
+                        SimpleNamespace(
+                            data=[category_2],
+                            meta=SimpleNamespace(pagination=None),
+                        ),
+                    ],
+                ),
+            ):
+                return await client.fetch_categories()
+        finally:
+            await client.close()
+
+    result = asyncio.run(run())
+    assert [category.id for category in result] == [1, 2]
+
+
 class MockResponse:
     """Generic mock response for testing purposes."""
 
@@ -283,4 +516,16 @@ class MockResponse:
 
     def raise_for_status(self) -> None:
         """Simulate successful response (does nothing)."""
+        return
+
+
+class MockBadJsonResponse:
+    """Mock response that fails JSON parsing."""
+
+    status_code = 200
+
+    def json(self) -> Dict[str, Any]:
+        raise ValueError("invalid json")
+
+    def raise_for_status(self) -> None:
         return

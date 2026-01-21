@@ -37,3 +37,7 @@ openapi-postgen:
 		'' \
 		'sys.modules["openapi_client"] = _openapi_client' \
 		> ff_iii_luciferin/openapi/__init__.py
+
+cmt:
+	uv run
+	uv run cz commit
