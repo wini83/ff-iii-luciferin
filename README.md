@@ -4,6 +4,7 @@
 ![PyPI](https://img.shields.io/pypi/v/ff-iii-luciferin?include_prereleases)
 ![Python](https://img.shields.io/pypi/pyversions/ff-iii-luciferin?include_prereleases)
 ![License](https://img.shields.io/pypi/l/ff-iii-luciferin?include_prereleases)
+[![codecov](https://codecov.io/gh/wini83/ff-iii-luciferin/graph/badge.svg?token=SSWFZZT4J1)](https://codecov.io/gh/wini83/ff-iii-luciferin)
 
 **ff-iii-luciferin** is a Python enrichment engine for  
 [Firefly III](https://www.firefly-iii.org/) transactions.
