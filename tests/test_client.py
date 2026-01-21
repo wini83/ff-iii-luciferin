@@ -13,7 +13,12 @@ import pytest
 
 from ff_iii_luciferin.api import FireflyAPIError, FireflyClient
 from ff_iii_luciferin.api.transaction_update import TransactionUpdate
-from ff_iii_luciferin.domain.models import SimplifiedCategory, SimplifiedTx
+from ff_iii_luciferin.domain.models import (
+    Currency,
+    SimplifiedCategory,
+    SimplifiedTx,
+    TxType,
+)
 from ff_iii_luciferin.mappers.transaction_mapper import TransactionMapResult
 
 BASE_URL = "https://demo.firefly.local"
@@ -29,6 +34,9 @@ def _transaction_split_payload(
     notes: str | None = None,
     category_id: str | None = None,
     category_name: str | None = None,
+    currency_code: str = "USD",
+    currency_symbol: str = "$",
+    currency_decimals: int = 2,
 ) -> dict[str, Any]:
     return {
         "type": "withdrawal",
@@ -41,6 +49,9 @@ def _transaction_split_payload(
         "notes": notes,
         "category_id": category_id,
         "category_name": category_name,
+        "currency_code": currency_code,
+        "currency_symbol": currency_symbol,
+        "currency_decimal_places": currency_decimals,
     }
 
 
@@ -154,7 +165,11 @@ def test_fetch_categories(mock_request: MagicMock) -> None:
 def test_get_transaction_happy_path(mock_request: MagicMock) -> None:
     """Test fetching a single transaction by ID."""
     split = _transaction_split_payload(
-        "Lunch", tags=["food"], notes="Receipt", category_name="Eating Out"
+        "Lunch",
+        tags=["food"],
+        notes="Receipt",
+        category_id="4",
+        category_name="Eating Out",
     )
     mock_request.return_value = MockResponse(_transaction_single_response("123", split))
 
@@ -170,7 +185,7 @@ def test_get_transaction_happy_path(mock_request: MagicMock) -> None:
     assert result.description == "Lunch"
     assert result.tags == ["food"]
     assert result.notes == "Receipt"
-    assert result.category == "Eating Out"
+    assert result.category == SimplifiedCategory(id=4, name="Eating Out")
 
 
 @patch(
@@ -378,6 +393,9 @@ def test_fetch_transactions_skips_invalid_and_multipart() -> None:
         tags=[],
         notes=None,
         category=None,
+        currency=Currency(code="USD", symbol="$", decimals=2),
+        fx=None,
+        type=TxType.WITHDRAWAL,
     )
 
     async def _gen(self: FireflyClient, **_: Any) -> Any:

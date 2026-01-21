@@ -1,7 +1,12 @@
 from datetime import date
 from decimal import Decimal
 
-from ff_iii_luciferin.domain.models import SimplifiedItem, SimplifiedTx
+from ff_iii_luciferin.domain.models import (
+    Currency,
+    SimplifiedItem,
+    SimplifiedTx,
+    TxType,
+)
 from ff_iii_luciferin.services.basic_matcher import match
 
 
@@ -13,7 +18,10 @@ def test_match_returns_records_with_same_date_and_amount() -> None:
         date=date(2025, 1, 1),
         tags=[],
         notes="",
-        category="",
+        category=None,
+        currency=Currency(code="USD", symbol="$", decimals=2),
+        fx=None,
+        type=TxType.WITHDRAWAL,
     )
     records = [
         SimplifiedItem(date=date(2025, 1, 1), amount=Decimal("-10.00")),
@@ -33,7 +41,10 @@ def test_match_handles_multiple_candidates() -> None:
         date=date(2025, 2, 1),
         tags=["recurring"],
         notes="",
-        category="",
+        category=None,
+        currency=Currency(code="USD", symbol="$", decimals=2),
+        fx=None,
+        type=TxType.WITHDRAWAL,
     )
     records = [
         SimplifiedItem(date=date(2025, 2, 1), amount=Decimal("25.00")),
