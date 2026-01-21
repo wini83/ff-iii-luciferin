@@ -1,3 +1,14 @@
+## v1.0.0b5 (2026-01-21)
+
+### Feat
+
+- **domain**: enrich transactions with currency/fx,and type
+- **domain**: enrich transactions with currency/fx,and type
+
+### Refactor
+
+- modernize typing hints and clean matcher artifact
+
 ## v1.0.0b4 (2026-01-20)
 
 ### Refactor
