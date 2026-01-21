@@ -39,5 +39,5 @@ openapi-postgen:
 		> ff_iii_luciferin/openapi/__init__.py
 
 cmt:
-	uv run
+	uv run uv run pre-commit run --all-files
 	uv run cz commit
