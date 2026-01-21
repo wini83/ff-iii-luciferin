@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Any
 
 from ff_iii_luciferin.api.openapi_types import (
     TransactionTypeProperty,
@@ -23,7 +24,7 @@ from ff_iii_luciferin.openapi.openapi_client.models.transaction_read import (
 )
 
 
-def make_transaction_read_from_split(split_dict: dict) -> TransactionRead:
+def make_transaction_read_from_split(split_dict: dict[str, Any]) -> TransactionRead:
     tx = Transaction.model_validate({"transactions": [split_dict]})
     return TransactionRead.model_validate(
         {
