@@ -1,4 +1,4 @@
-.PHONY: openapi-gen openapi-clean openapi-postgen
+.PHONY: openapi-gen openapi-clean openapi-postgen cov
 
 openapi-gen: openapi-clean
 	docker run --rm \
@@ -48,3 +48,6 @@ ruff:
 
 ty:
 	uv run ty check ff_iii_luciferin
+
+cov:
+	uv run pytest --cov=ff_iii_luciferin --cov-report=term-missing

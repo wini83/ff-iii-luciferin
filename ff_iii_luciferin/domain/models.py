@@ -21,6 +21,18 @@ class TxType(StrEnum):
     TRANSFER = "transfer"
 
 
+class AccountType(StrEnum):
+    ASSET = "asset"
+    EXPENSE = "expense"
+    REVENUE = "revenue"
+    LIABILITY = "liability"
+    LOAN = "loan"
+    DEBT = "debt"
+    MORTGAGE = "mortgage"
+    INITIAL_BALANCE = "initial-balance"
+    RECONCILIATION = "reconciliation"
+
+
 @dataclass(slots=True, frozen=True)
 class Currency:
     code: str  # "EUR"
@@ -34,7 +46,7 @@ class FXContext:
     original_amount: Decimal
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class SimplifiedCategory:
     """Simplified representation of a Firefly III Category."""
 
@@ -42,7 +54,15 @@ class SimplifiedCategory:
     name: str
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
+class SimplifiedAccountRef:
+    id: int
+    name: str
+    type: AccountType
+    iban: str | None = None
+
+
+@dataclass(eq=False)
 class SimplifiedTx(SimplifiedItem):
     """Simplified representation of a Firefly III transaction."""
 
@@ -54,3 +74,5 @@ class SimplifiedTx(SimplifiedItem):
     currency: Currency
     fx: FXContext | None
     type: TxType
+    source_account: SimplifiedAccountRef | None = None
+    destination_account: SimplifiedAccountRef | None = None
