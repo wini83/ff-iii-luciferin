@@ -42,6 +42,7 @@ annotated_tag = true
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+force-exclude = true
 
 exclude = [
     ".git",
@@ -75,6 +76,13 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.src]
+include = ["ff_iii_luciferin"]
+exclude = ["ff_iii_luciferin/openapi"]
 
 # --------------------
 # MyPy
@@ -113,10 +121,10 @@ dev = [
     "pytest",
     "pytest-cov",
     "ruff",
+    "ty",
     "mypy",
     "commitizen",
     "python-dotenv",
-    "black",
     "debugpy>=1.8.19",
 ]
 
@@ -129,24 +137,6 @@ dev = [
 [tool.setuptools.packages.find]
 # Explicit include to avoid setuptools flat-layout auto-discovery issues
 include = ["ff_iii_luciferin*"]
-
-
-# --------------------
-# Black (only for legacy / editors)
-# --------------------
-[tool.black]
-line-length = 88
-exclude = '''
-(
-    \.venv
-  | venv
-  | site-packages
-  | build
-  | dist
-  | ff_iii_luciferin/openapi
-)
-'''
-
 [tool.coverage.run]
 branch = true
 source = ["ff_iii_luciferin"]
@@ -167,4 +157,3 @@ Homepage = "https://github.com/wini83/ff-iii-luciferin"
 Repository = "https://github.com/wini83/ff-iii-luciferin"
 Issues = "https://github.com/wini83/ff-iii-luciferin/issues"
 Changelog = "https://github.com/wini83/ff-iii-luciferin/blob/main/CHANGELOG.md"
-

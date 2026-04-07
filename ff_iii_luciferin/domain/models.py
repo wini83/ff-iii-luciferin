@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 
 
 @dataclass(eq=False)
@@ -15,7 +15,7 @@ class SimplifiedItem:
         return self.date == other.date and abs(self.amount) == abs(other.amount)
 
 
-class TxType(str, Enum):
+class TxType(StrEnum):
     WITHDRAWAL = "withdrawal"
     DEPOSIT = "deposit"
     TRANSFER = "transfer"
