@@ -11,6 +11,13 @@
 
 ⚠️ This project is currently in **beta**. APIs may still change.
 
+Recent branch updates add richer transaction enrichment and a more readable
+transaction search example:
+
+- source and destination account references are now preserved on simplified transactions
+- the search demo renders a compact table with `rich`
+- the generated OpenAPI client has been refreshed for Firefly III API v6.5.5
+
 It provides a clean, async-first API for post-processing financial data:
 descriptions, notes, tags, and categories — without polluting your domain logic.
 
@@ -22,6 +29,7 @@ descriptions, notes, tags, and categories — without polluting your domain logi
 - 📝 Update transaction **descriptions** and **notes**
 - 🏷️ Add or manage **tags**
 - 🗂️ Assign or change **categories**
+- 🏦 Preserve simplified **source/destination account** references
 - 🚫 Filter unwanted transactions (e.g. uncategorized, split-only)
 - ⚠️ Explicit handling of API, network, and data errors
 - 🧱 Generated OpenAPI client kept internal (not public API)
@@ -98,9 +106,11 @@ async def main() -> None:
     finally:
         await client.close()
 
-
 asyncio.run(main())
 ````
+
+The `examples/min_usage_search.py` script shows the current transaction search
+output with a `rich` table, including category and account columns.
 
 ## 📄 License
 
