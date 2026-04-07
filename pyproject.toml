@@ -120,6 +120,7 @@ dev = [
     "pydantic-settings>=2.12.0",
     "pytest",
     "pytest-cov",
+    "rich",
     "ruff",
     "ty",
     "mypy",
