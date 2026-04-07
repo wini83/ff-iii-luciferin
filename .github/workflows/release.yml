@@ -4,10 +4,36 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      publish_prerelease:
+        description: "Allow publishing prerelease tags to PyPI"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    if: >-
+      ${{
+        (
+          github.event_name == 'push'
+          && !contains(github.ref_name, 'a')
+          && !contains(github.ref_name, 'b')
+          && !contains(github.ref_name, 'rc')
+        ) || (
+          github.event_name == 'workflow_dispatch'
+          && (
+            inputs.publish_prerelease
+            || (
+              !contains(github.ref_name, 'a')
+              && !contains(github.ref_name, 'b')
+              && !contains(github.ref_name, 'rc')
+            )
+          )
+        )
+      }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
