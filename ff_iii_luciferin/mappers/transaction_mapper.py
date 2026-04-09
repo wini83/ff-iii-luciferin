@@ -2,8 +2,10 @@ from dataclasses import dataclass
 from typing import Literal
 
 from ff_iii_luciferin.domain.models import (
+    AccountType,
     Currency,
     FXContext,
+    SimplifiedAccountRef,
     SimplifiedCategory,
     SimplifiedTx,
     TxType,
@@ -24,6 +26,44 @@ from ff_iii_luciferin.openapi.openapi_client.models.transaction_type_property im
 class TransactionMapResult:
     tx: SimplifiedTx | None
     reason: Literal["multipart", "invalid"] | None
+
+
+def map_account_type(api_type: str) -> AccountType | None:
+    return {
+        "Asset account": AccountType.ASSET,
+        "Expense account": AccountType.EXPENSE,
+        "Revenue account": AccountType.REVENUE,
+        "Liability account": AccountType.LIABILITY,
+        "liability": AccountType.LIABILITY,
+        "liabilities": AccountType.LIABILITY,
+        "Loan": AccountType.LOAN,
+        "Debt": AccountType.DEBT,
+        "Mortgage": AccountType.MORTGAGE,
+        "Initial balance account": AccountType.INITIAL_BALANCE,
+        "Reconciliation account": AccountType.RECONCILIATION,
+    }.get(api_type)
+
+
+def map_account_ref(
+    account_id: str | None,
+    account_name: str | None,
+    account_type: str | None,
+    account_iban: str | None,
+) -> SimplifiedAccountRef | None:
+    if not account_id or not account_name or not account_type:
+        return None
+
+    parsed_id = parse_int(account_id)
+    mapped_type = map_account_type(account_type)
+    if parsed_id is None or mapped_type is None:
+        return None
+
+    return SimplifiedAccountRef(
+        id=parsed_id,
+        name=account_name,
+        type=mapped_type,
+        iban=account_iban,
+    )
 
 
 def map_currency(split: TransactionSplit) -> Currency | None:
@@ -122,6 +162,18 @@ def map_transaction(tx: TransactionRead) -> TransactionMapResult:
 
     # --- FX ---
     fx = map_fx_context(split)
+    source_account = map_account_ref(
+        account_id=split.source_id,
+        account_name=split.source_name,
+        account_type=split.source_type,
+        account_iban=split.source_iban,
+    )
+    destination_account = map_account_ref(
+        account_id=split.destination_id,
+        account_name=split.destination_name,
+        account_type=split.destination_type,
+        account_iban=split.destination_iban,
+    )
 
     simple_tx = SimplifiedTx(
         id=tx_id,
@@ -134,6 +186,8 @@ def map_transaction(tx: TransactionRead) -> TransactionMapResult:
         category=category,
         currency=currency,
         fx=fx,
+        source_account=source_account,
+        destination_account=destination_account,
     )
 
     return TransactionMapResult(tx=simple_tx, reason=None)

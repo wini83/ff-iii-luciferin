@@ -3,7 +3,9 @@ name: Release (TestPyPI)
 on:
   push:
     tags:
-      - "v*"
+      - "v*.*a*"
+      - "v*.*b*"
+      - "v*.*rc*"
 
 jobs:
   publish:
