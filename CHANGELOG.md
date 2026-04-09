@@ -1,3 +1,9 @@
+## v1.0.0 (2026-04-09)
+
+### Feat
+
+- add simplified account refs to transactions and regenerate Firefly III client for API v6.5.5
+
 ## v1.0.0b5 (2026-01-21)
 
 ### Feat
