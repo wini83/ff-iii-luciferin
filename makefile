@@ -1,4 +1,4 @@
-.PHONY: openapi-gen openapi-clean openapi-postgen
+.PHONY: openapi-gen openapi-clean openapi-postgen cov
 
 openapi-gen: openapi-clean
 	docker run --rm \
@@ -6,7 +6,7 @@ openapi-gen: openapi-clean
 	  -v "$(PWD):/local" \
 	  openapitools/openapi-generator-cli:latest \
 	  generate \
-	  -i /local/openapi/firefly-iii-6.4.14-v1.yaml \
+	  -i /local/openapi/firefly-iii-6.5.5-v1.yaml \
 	  -g python \
 	  -o /local/ff_iii_luciferin/openapi \
 	  --global-property=models,modelDocs=false,modelTests=false
@@ -45,3 +45,9 @@ cmt:
 ruff:
 	uv run ruff check . --fix
 	uv run ruff format .
+
+ty:
+	uv run ty check ff_iii_luciferin
+
+cov:
+	uv run pytest --cov=ff_iii_luciferin --cov-report=term-missing
