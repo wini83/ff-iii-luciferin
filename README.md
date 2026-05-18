@@ -9,7 +9,6 @@
 **ff-iii-luciferin** is a Python enrichment engine for  
 [Firefly III](https://www.firefly-iii.org/) transactions.
 
-⚠️ This project is currently in **beta**. APIs may still change.
 
 Recent branch updates add richer transaction enrichment and a more readable
 transaction search example:
