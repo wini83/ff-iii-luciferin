@@ -9,21 +9,6 @@
 **ff-iii-luciferin** is a Python enrichment engine for  
 [Firefly III](https://www.firefly-iii.org/) transactions.
 
-
-Recent branch updates add richer transaction enrichment and a more readable
-transaction search example:
-
-- source and destination account references are now preserved on simplified transactions
-- the search demo renders a compact table with `rich`
-- the generated OpenAPI client has been refreshed for Firefly III API v6.5.5
-
-Recent branch updates add richer transaction enrichment and a more readable
-transaction search example:
-
-- source and destination account references are now preserved on simplified transactions
-- the search demo renders a compact table with `rich`
-- the generated OpenAPI client has been refreshed for Firefly III API v6.5.5
-
 It provides a clean, async-first API for post-processing financial data:
 descriptions, notes, tags, and categories — without polluting your domain logic.
 
