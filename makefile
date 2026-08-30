@@ -1,12 +1,15 @@
+OPENAPI_GENERATOR_VERSION ?= 7.25.0
+OPENAPI_SPEC ?= $(shell find openapi -maxdepth 1 -type f -name 'firefly-iii-*-v1.yaml' | sort -V | tail -1)
+
 .PHONY: openapi-gen openapi-clean openapi-postgen cov
 
 openapi-gen: openapi-clean
 	docker run --rm \
 	  --user $(shell id -u):$(shell id -g) \
 	  -v "$(PWD):/local" \
-	  openapitools/openapi-generator-cli:latest \
+	  openapitools/openapi-generator-cli:$(OPENAPI_GENERATOR_VERSION) \
 	  generate \
-	  -i /local/openapi/firefly-iii-6.5.5-v1.yaml \
+	  -i /local/$(OPENAPI_SPEC) \
 	  -g python \
 	  -o /local/ff_iii_luciferin/openapi \
 	  --global-property=models,modelDocs=false,modelTests=false
