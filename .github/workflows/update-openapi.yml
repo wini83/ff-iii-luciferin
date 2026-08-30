@@ -1,0 +1,72 @@
+name: Update Firefly III OpenAPI client
+
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-firefly-openapi
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Find and download latest stable specification
+        id: update
+        run: python scripts/update_openapi.py
+
+      - name: Regenerate OpenAPI models
+        if: steps.update.outputs.changed == 'true'
+        run: make openapi-gen
+
+      - name: Set up Python
+        if: steps.update.outputs.changed == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        if: steps.update.outputs.changed == 'true'
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Verify regenerated client
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          uv sync --dev --locked
+          uv run ruff check .
+          uv run mypy .
+          uv run pytest --cov=ff_iii_luciferin --cov-fail-under=75
+
+      - name: Create pull request
+        if: steps.update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          base: dev
+          branch: automation/update-firefly-openapi
+          delete-branch: true
+          commit-message: >-
+            chore(openapi): update client for Firefly III
+            v${{ steps.update.outputs.version }}
+          title: >-
+            chore(openapi): update client for Firefly III
+            v${{ steps.update.outputs.version }}
+          body: |
+            Automated update from the official Firefly III API documentation.
+
+            - Firefly III: `${{ steps.update.outputs.version }}`
+            - API: `v1`
+            - OpenAPI Generator: `7.25.0`
