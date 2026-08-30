@@ -10,6 +10,7 @@ import sys
 import tempfile
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 API_DOCS_CONTENTS_URL = (
     "https://api.github.com/repos/firefly-iii/api-docs/contents/dist?ref=main"
@@ -22,7 +23,8 @@ def version_from_name(name: str) -> tuple[int, int, int] | None:
     match = SPEC_PATTERN.fullmatch(name)
     if match is None:
         return None
-    return tuple(map(int, match.groups()))
+    major, minor, patch = map(int, match.groups())
+    return major, minor, patch
 
 
 def request(url: str) -> urllib.request.Request:
@@ -38,14 +40,17 @@ def request(url: str) -> urllib.request.Request:
 
 def newest_upstream_spec() -> tuple[tuple[int, int, int], str, str]:
     with urllib.request.urlopen(request(API_DOCS_CONTENTS_URL), timeout=30) as response:
-        entries = json.load(response)
+        entries = cast(list[dict[str, object]], json.load(response))
 
-    candidates = []
+    candidates: list[tuple[tuple[int, int, int], str, str]] = []
     for entry in entries:
-        version = version_from_name(entry.get("name", ""))
+        name = entry.get("name")
         download_url = entry.get("download_url")
-        if version is not None and isinstance(download_url, str):
-            candidates.append((version, entry["name"], download_url))
+        if not isinstance(name, str) or not isinstance(download_url, str):
+            continue
+        version = version_from_name(name)
+        if version is not None:
+            candidates.append((version, name, download_url))
 
     if not candidates:
         raise RuntimeError("No stable Firefly III OpenAPI v1 specification found")
@@ -66,7 +71,7 @@ def set_output(name: str, value: str) -> None:
     if output_file:
         with Path(output_file).open("a", encoding="utf-8") as output:
             output.write(f"{name}={value}\n")
-    print(f"{name}={value}")
+    sys.stdout.write(f"{name}={value}\n")
 
 
 def download_spec(url: str, destination: Path) -> None:
@@ -108,5 +113,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
-        print(f"OpenAPI update failed: {error}", file=sys.stderr)
+        sys.stderr.write(f"OpenAPI update failed: {error}\n")
         raise SystemExit(1) from error
