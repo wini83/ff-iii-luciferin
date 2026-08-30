@@ -78,7 +78,7 @@ def download_spec(url: str, destination: Path) -> None:
     with urllib.request.urlopen(request(url), timeout=60) as response:
         content = response.read()
     if not content.startswith((b"openapi:", b"swagger:")):
-        raise RuntimeError("Downloaded file does not look like an OpenAPI specification")
+        raise RuntimeError(\n            "Downloaded file does not look like an OpenAPI specification"\n        )
 
     OPENAPI_DIR.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=OPENAPI_DIR, delete=False) as temporary:
