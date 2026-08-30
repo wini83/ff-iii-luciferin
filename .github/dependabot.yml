@@ -1,0 +1,83 @@
+version: 2
+
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+      timezone: "Europe/Warsaw"
+    target-branch: "dev"
+    open-pull-requests-limit: 5
+
+    groups:
+      runtime:
+        patterns:
+          - "aenum"
+          - "httpx"
+          - "anyio"
+
+      tooling:
+        patterns:
+          - "commitizen"
+          - "debugpy"
+          - "mypy"
+          - "pre-commit"
+          - "pydantic*"
+          - "pytest*"
+          - "python-dotenv"
+          - "rich"
+          - "ruff"
+          - "ty"
+
+      other:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "aenum"
+          - "httpx"
+          - "anyio"
+          - "commitizen"
+          - "debugpy"
+          - "mypy"
+          - "pre-commit"
+          - "pydantic*"
+          - "pytest*"
+          - "python-dotenv"
+          - "rich"
+          - "ruff"
+          - "ty"
+
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+    commit-message:
+      prefix: "deps"
+
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:30"
+      timezone: "Europe/Warsaw"
+    target-branch: "dev"
+    open-pull-requests-limit: 3
+
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+    commit-message:
+      prefix: "ci"
+
+    labels:
+      - "dependencies"
+      - "github-actions"
