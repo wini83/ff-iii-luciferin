@@ -1,4 +1,4 @@
-OPENAPI_GENERATOR_VERSION ?= 7.25.0
+OPENAPI_GENERATOR_VERSION ?= v7.25.0
 OPENAPI_SPEC ?= $(shell find openapi -maxdepth 1 -type f -name 'firefly-iii-*-v1.yaml' | sort -V | tail -1)
 
 .PHONY: openapi-gen openapi-clean openapi-postgen cov
