@@ -18,6 +18,7 @@ API_DOCS_RAW_URL = "https://raw.githubusercontent.com/firefly-iii/api-docs"
 RELEASE_PATTERN = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 SPEC_PATTERN = re.compile(r"^firefly-iii-v?(\d+)\.(\d+)\.(\d+)-v1\.yaml$")
 OPENAPI_DIR = Path("openapi")
+BUGGY_BUDGET_CHART_VERSION = (6, 7, 4)
 
 
 def version_from_name(name: str) -> tuple[int, int, int] | None:
@@ -110,6 +111,31 @@ def save_spec(content: bytes, destination: Path) -> None:
     temporary_path.replace(destination)
 
 
+def patch_known_upstream_issues(
+    version: tuple[int, int, int], content: bytes
+) -> bytes:
+    if version != BUGGY_BUDGET_CHART_VERSION:
+        return content
+
+    # Firefly III 6.7.4 assigns getChartBudgetOverview to two chart endpoints.
+    # Give the newer endpoint its own operationId without disabling validation.
+    path = b"  /v1/chart/budget/overview-with-limits:\n"
+    old_id = b"      operationId: getChartBudgetOverview\n"
+    new_id = b"      operationId: getChartBudgetOverviewWithLimits\n"
+    start = content.find(path)
+    if start < 0:
+        raise RuntimeError("Expected budget chart endpoint missing from 6.7.4 spec")
+    end = content.find(b"\n  /v1/", start + len(path))
+    if end < 0:
+        end = len(content)
+    section = content[start:end]
+    if section.count(old_id) == 0 and content.count(old_id) == 1:
+        return content  # Upstream has already corrected the duplicate.
+    if section.count(old_id) != 1 or content.count(old_id) != 2:
+        raise RuntimeError("Unexpected budget chart operationIds in 6.7.4 spec")
+    return content[:start] + section.replace(old_id, new_id, 1) + content[end:]
+
+
 def main() -> int:
     local_version = current_local_version()
     upstream = newest_published_spec(local_version)
@@ -119,7 +145,7 @@ def main() -> int:
     upstream_version, upstream_name, content = upstream
     version_text = ".".join(map(str, upstream_version))
     destination = OPENAPI_DIR / upstream_name
-    save_spec(content, destination)
+    save_spec(patch_known_upstream_issues(upstream_version, content), destination)
     for path in OPENAPI_DIR.glob("firefly-iii-*-v1.yaml"):
         if path != destination and version_from_name(path.name) is not None:
             path.unlink()
