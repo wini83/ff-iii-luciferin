@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout development branch
+      - name: Checkout main branch
         uses: actions/checkout@v7
         with:
-          ref: dev
+          ref: main
 
       - name: Find and download latest stable specification
         id: update
@@ -55,7 +55,7 @@ jobs:
         if: steps.update.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
-          base: dev
+          base: main
           branch: automation/update-firefly-openapi
           delete-branch: true
           commit-message: >-
