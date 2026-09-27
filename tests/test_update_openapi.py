@@ -62,3 +62,35 @@ def test_skips_download_when_local_spec_is_current() -> None:
     ):
         assert update_openapi.newest_published_spec((6, 7, 4)) is None
     download.assert_not_called()
+
+
+def test_fixes_duplicate_budget_chart_operation_id() -> None:
+    content = (
+        b"openapi: 3.0.0\n"
+        b"  /v1/chart/budget/overview:\n"
+        b"    get:\n"
+        b"      operationId: getChartBudgetOverview\n"
+        b"  /v1/chart/budget/overview-with-limits:\n"
+        b"    get:\n"
+        b"      operationId: getChartBudgetOverview\n"
+        b"      responses:\n"
+        b"  /v1/chart/other:\n"
+    )
+
+    patched = update_openapi.patch_known_upstream_issues((6, 7, 4), content)
+
+    assert patched.count(b"operationId: getChartBudgetOverview\n") == 1
+    assert patched.count(b"operationId: getChartBudgetOverviewWithLimits\n") == 1
+    assert update_openapi.patch_known_upstream_issues((6, 7, 4), patched) == patched
+    assert update_openapi.patch_known_upstream_issues((6, 7, 5), content) == content
+
+
+def test_rejects_unexpected_duplicate_operation_ids() -> None:
+    content = (
+        b"openapi: 3.0.0\n"
+        b"  /v1/chart/budget/overview-with-limits:\n"
+        b"    get:\n"
+        b"      operationId: getChartBudgetOverview\n"
+    )
+    with pytest.raises(RuntimeError, match="Unexpected budget chart"):
+        update_openapi.patch_known_upstream_issues((6, 7, 4), content)
