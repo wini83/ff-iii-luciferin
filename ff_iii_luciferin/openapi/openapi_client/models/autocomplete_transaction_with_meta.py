@@ -18,23 +18,25 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict
-from typing import Any, ClassVar, Dict, List
-from openapi_client.models.meta import Meta
-from openapi_client.models.page_link import PageLink
-from openapi_client.models.user_group_read import UserGroupRead
+from datetime import datetime
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
-class UserGroupArray(BaseModel):
+class AutocompleteTransactionWithMeta(BaseModel):
     """
-    UserGroupArray
+    AutocompleteTransactionWithMeta
     """ # noqa: E501
-    data: List[UserGroupRead]
-    meta: Meta
-    links: PageLink
-    __properties: ClassVar[List[str]] = ["data", "meta", "links"]
+    id: StrictStr = Field(description="The ID of a transaction journal (basically a single split).", json_schema_extra={"examples": ["2"]})
+    transaction_group_id: Optional[StrictStr] = Field(default=None, description="The ID of the underlying transaction group.", json_schema_extra={"examples": ["2"]})
+    name: StrictStr = Field(description="Transaction description with ID in the name.", json_schema_extra={"examples": ["#12: Transaction"]})
+    description: StrictStr = Field(description="Transaction description with ID in the name.", json_schema_extra={"examples": ["#12: Transaction"]})
+    var_date: Optional[datetime] = Field(default=None, alias="date", json_schema_extra={"examples": ["2026-09-01T00:00:00Z"]})
+    currency_code: Optional[StrictStr] = Field(default=None, description="Currency code.", json_schema_extra={"examples": ["EUR"]})
+    amount: Optional[StrictStr] = Field(default=None, description="The amount that was paid for this subscription in the subscription's currency.", json_schema_extra={"examples": ["123.45"]})
+    __properties: ClassVar[List[str]] = ["id", "transaction_group_id", "name", "description", "date", "currency_code", "amount"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -54,7 +56,7 @@ class UserGroupArray(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of UserGroupArray from a JSON string"""
+        """Create an instance of AutocompleteTransactionWithMeta from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -75,23 +77,11 @@ class UserGroupArray(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of each item in data (list)
-        _items = []
-        if self.data:
-            for _item_data in self.data:
-                _items.append(_item_data.to_dict() if _item_data is not None else None)
-            _dict['data'] = _items
-        # override the default output from pydantic by calling `to_dict()` of meta
-        if self.meta:
-            _dict['meta'] = self.meta.to_dict()
-        # override the default output from pydantic by calling `to_dict()` of links
-        if self.links:
-            _dict['links'] = self.links.to_dict()
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of UserGroupArray from a dict"""
+        """Create an instance of AutocompleteTransactionWithMeta from a dict"""
         if obj is None:
             return None
 
@@ -99,9 +89,13 @@ class UserGroupArray(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "data": [UserGroupRead.from_dict(_item) for _item in obj["data"]] if obj.get("data") is not None else None,
-            "meta": Meta.from_dict(obj["meta"]) if obj.get("meta") is not None else None,
-            "links": PageLink.from_dict(obj["links"]) if obj.get("links") is not None else None
+            "id": obj.get("id"),
+            "transaction_group_id": obj.get("transaction_group_id"),
+            "name": obj.get("name"),
+            "description": obj.get("description"),
+            "date": obj.get("date"),
+            "currency_code": obj.get("currency_code"),
+            "amount": obj.get("amount")
         })
         return _obj
 
