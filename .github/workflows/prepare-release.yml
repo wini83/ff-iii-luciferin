@@ -1,0 +1,196 @@
+name: Prepare release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: prepare-release-main
+  cancel-in-progress: false
+
+jobs:
+  finalize-release-tag:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.state.outputs.ready }}
+      release_tag: ${{ steps.state.outputs.release_tag }}
+      draft_ready: ${{ steps.state.outputs.draft_ready }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Sync locked dependencies
+        run: uv sync --dev --locked
+
+      - name: Create tag for a merged release pull request
+        id: state
+        shell: bash
+        run: |
+          current_version="$(uv run cz version -p)"
+          release_tag="v${current_version}"
+          echo "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
+
+          if git rev-parse -q --verify "refs/tags/${release_tag}" >/dev/null; then
+            echo "${release_tag} already exists."
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            if [[ "$(git rev-parse "${release_tag}^{commit}")" == "$GITHUB_SHA" ]]; then
+              echo "draft_ready=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "draft_ready=false" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+
+          if ! git log -1 --format=%s | grep -Eq "^bump: version .+ → ${current_version}( \\(#[0-9]+\\))?$"; then
+            echo "${release_tag} is not tagged, but HEAD is not a merged release bump."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "draft_ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag --annotate "${release_tag}" --message "Release ${release_tag}"
+          git push origin "${release_tag}"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+          echo "draft_ready=true" >> "$GITHUB_OUTPUT"
+
+  draft-release:
+    needs: finalize-release-tag
+    if: needs.finalize-release-tag.outputs.draft_ready == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.finalize-release-tag.outputs.release_tag }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Extract release notes
+        env:
+          RELEASE_TAG: ${{ needs.finalize-release-tag.outputs.release_tag }}
+        run: python scripts/extract_release_notes.py "$RELEASE_TAG" release-notes.md
+
+      - name: Ensure draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.finalize-release-tag.outputs.release_tag }}
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "GitHub Release ${RELEASE_TAG} already exists."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" \
+            --draft \
+            --verify-tag \
+            --title "$RELEASE_TAG" \
+            --notes-file release-notes.md
+
+  prepare-release:
+    needs: finalize-release-tag
+    if: needs.finalize-release-tag.outputs.ready == 'true' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Sync locked dependencies
+        run: uv sync --dev --locked
+
+      - name: Determine next version
+        id: version
+        shell: bash
+        run: |
+          set +e
+          next_version="$(uv run cz bump --dry-run --yes --get-next)"
+          status=$?
+          set -e
+          if [[ $status -eq 3 || $status -eq 21 ]]; then
+            echo "No releasable Conventional Commit found."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ $status -ne 0 ]]; then
+            exit "$status"
+          fi
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "version=$next_version" >> "$GITHUB_OUTPUT"
+
+      - name: Check release branch
+        if: steps.version.outputs.should_release == 'true'
+        id: branch
+        env:
+          RELEASE_BRANCH: release/v${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare and push release branch
+        if: steps.version.outputs.should_release == 'true' && steps.branch.outputs.exists == 'false'
+        env:
+          RELEASE_BRANCH: release/v${{ steps.version.outputs.version }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          uv run cz bump --yes --check-consistency
+          git tag -d "v${RELEASE_VERSION}"
+          uv lock
+          git add uv.lock
+          git commit --amend --no-edit
+          git push origin HEAD:"refs/heads/${RELEASE_BRANCH}"
+
+      - name: Ensure release pull request
+        if: steps.version.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: release/v${{ steps.version.outputs.version }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          if gh pr list --base main --head "$RELEASE_BRANCH" --state open --json url --jq '.[0].url' | grep -q .; then
+            exit 0
+          fi
+          gh pr create --base main --head "$RELEASE_BRANCH" \
+            --title "bump: version $RELEASE_VERSION" \
+            --body "Automated release preparation for v$RELEASE_VERSION. Merge after checks pass. The workflow will create a draft GitHub Release; publish that draft to release the package to PyPI."
+          # GITHUB_TOKEN-created pull requests do not trigger pull_request workflows.
+          gh workflow run ci.yml --ref "$RELEASE_BRANCH"

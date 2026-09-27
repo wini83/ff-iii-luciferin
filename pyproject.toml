@@ -127,6 +127,8 @@ dev = [
     "commitizen",
     "python-dotenv",
     "debugpy>=1.8.19",
+    "packaging>=24",
+    "twine>=6",
 ]
 
 # --------------------

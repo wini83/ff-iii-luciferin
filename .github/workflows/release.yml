@@ -1,46 +1,140 @@
-name: Release (PyPI)
+name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types:
+      - published
   workflow_dispatch:
     inputs:
-      publish_prerelease:
-        description: "Allow publishing prerelease tags to PyPI"
-        required: false
-        type: boolean
-        default: false
+      release_tag:
+        description: Existing vX.Y.Z or vX.Y.ZrcN tag to publish to TestPyPI
+        required: true
+        type: string
+      target:
+        description: Manual runs are restricted to TestPyPI
+        required: true
+        type: choice
+        options:
+          - testpypi
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ff-iii-luciferin-package-release
+  cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
-    if: >-
-      ${{
-        (
-          github.event_name == 'push'
-          && !contains(github.ref_name, 'a')
-          && !contains(github.ref_name, 'b')
-          && !contains(github.ref_name, 'rc')
-        ) || (
-          github.event_name == 'workflow_dispatch'
-          && (
-            inputs.publish_prerelease
-            || (
-              !contains(github.ref_name, 'a')
-              && !contains(github.ref_name, 'b')
-              && !contains(github.ref_name, 'rc')
-            )
-          )
-        )
-      }}
+    outputs:
+      release-tag: ${{ steps.release.outputs.tag }}
+      target: ${{ steps.release.outputs.target }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - name: Resolve release target
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          MANUAL_TAG: ${{ inputs.release_tag }}
+        shell: bash
+        run: |
+          if [[ "$EVENT_NAME" == "release" ]]; then
+            echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+            echo "target=pypi" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=$MANUAL_TAG" >> "$GITHUB_OUTPUT"
+            echo "target=testpypi" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - run: pip install uv
-      - run: uv build
-      - env:
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Sync locked dependencies
+        run: uv sync --dev --locked
+
+      - name: Verify tag and publication order
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_TARGET: ${{ steps.release.outputs.target }}
+        run: uv run python scripts/verify_release.py "$RELEASE_TAG" "$RELEASE_TARGET"
+
+      - name: Ruff check
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check scripts tests
+
+      - name: Type check
+        run: uv run mypy .
+
+      - name: Tests
+        run: uv run pytest --cov=ff_iii_luciferin --cov-fail-under=75
+
+      - name: Build and verify distributions
+        run: |
+          uv build --clear
+          uv run twine check --strict dist/*
+
+      - name: Upload verified distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-distributions
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/ff-iii-luciferin/
+    steps:
+      - name: Download verified distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: python-distributions
+          path: dist/
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Publish to TestPyPI with existing API token
+        env:
+          UV_PUBLISH_URL: https://test.pypi.org/legacy/
+          UV_PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: uv publish dist/*
+
+  publish-pypi:
+    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/ff-iii-luciferin/
+    steps:
+      - name: Download verified distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: python-distributions
+          path: dist/
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Publish to PyPI with existing API token
+        env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: uv publish
+        run: uv publish dist/*
