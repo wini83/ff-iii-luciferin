@@ -8,13 +8,14 @@ import os
 import re
 import sys
 import tempfile
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import cast
 
-API_DOCS_CONTENTS_URL = (
-    "https://api.github.com/repos/firefly-iii/api-docs/contents/dist?ref=main"
-)
+RELEASES_URL = "https://api.github.com/repos/firefly-iii/firefly-iii/releases?per_page=100"
+API_DOCS_RAW_URL = "https://raw.githubusercontent.com/firefly-iii/api-docs"
+RELEASE_PATTERN = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 SPEC_PATTERN = re.compile(r"^firefly-iii-v?(\d+)\.(\d+)\.(\d+)-v1\.yaml$")
 OPENAPI_DIR = Path("openapi")
 
@@ -38,23 +39,50 @@ def request(url: str) -> urllib.request.Request:
     )
 
 
-def newest_upstream_spec() -> tuple[tuple[int, int, int], str, str]:
-    with urllib.request.urlopen(request(API_DOCS_CONTENTS_URL), timeout=30) as response:
+def stable_releases() -> list[tuple[tuple[int, int, int], str]]:
+    with urllib.request.urlopen(request(RELEASES_URL), timeout=30) as response:
         entries = cast(list[dict[str, object]], json.load(response))
 
-    candidates: list[tuple[tuple[int, int, int], str, str]] = []
+    releases: list[tuple[tuple[int, int, int], str]] = []
     for entry in entries:
-        name = entry.get("name")
-        download_url = entry.get("download_url")
-        if not isinstance(name, str) or not isinstance(download_url, str):
+        tag = entry.get("tag_name")
+        if entry.get("draft") or entry.get("prerelease") or not isinstance(tag, str):
             continue
-        version = version_from_name(name)
-        if version is not None:
-            candidates.append((version, name, download_url))
+        match = RELEASE_PATTERN.fullmatch(tag)
+        if match is not None:
+            major, minor, patch = map(int, match.groups())
+            releases.append(((major, minor, patch), tag))
+    if not releases:
+        raise RuntimeError("No stable Firefly III releases found")
+    return sorted(releases, reverse=True)
 
-    if not candidates:
-        raise RuntimeError("No stable Firefly III OpenAPI v1 specification found")
-    return max(candidates)
+
+def newest_published_spec(
+    local_version: tuple[int, int, int] | None,
+) -> tuple[tuple[int, int, int], str, bytes] | None:
+    for version, tag in stable_releases():
+        if local_version is not None and version <= local_version:
+            break
+        version_text = ".".join(map(str, version))
+        # Older branches used filenames without the leading 'v'.
+        names = [f"firefly-iii-{tag}-v1.yaml"]
+        if tag.startswith("v"):
+            names.append(f"firefly-iii-{version_text}-v1.yaml")
+        for name in names:
+            url = f"{API_DOCS_RAW_URL}/{tag}/dist/{name}"
+            try:
+                with urllib.request.urlopen(request(url), timeout=60) as response:
+                    content = response.read()
+            except urllib.error.HTTPError as error:
+                if error.code == 404:
+                    # The release may precede publication of its documentation.
+                    continue
+                raise
+            if not content.startswith((b"openapi:", b"swagger:")):
+                raise RuntimeError(f"Downloaded {name} is not an OpenAPI specification")
+            return version, name, content
+        sys.stdout.write(f"OpenAPI specification for {tag} not published yet\n")
+    return None
 
 
 def current_local_version() -> tuple[int, int, int] | None:
@@ -74,14 +102,7 @@ def set_output(name: str, value: str) -> None:
     sys.stdout.write(f"{name}={value}\n")
 
 
-def download_spec(url: str, destination: Path) -> None:
-    with urllib.request.urlopen(request(url), timeout=60) as response:
-        content = response.read()
-    if not content.startswith((b"openapi:", b"swagger:")):
-        raise RuntimeError(
-            "Downloaded file does not look like an OpenAPI specification"
-        )
-
+def save_spec(content: bytes, destination: Path) -> None:
     OPENAPI_DIR.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=OPENAPI_DIR, delete=False) as temporary:
         temporary.write(content)
@@ -90,17 +111,15 @@ def download_spec(url: str, destination: Path) -> None:
 
 
 def main() -> int:
-    upstream_version, upstream_name, download_url = newest_upstream_spec()
     local_version = current_local_version()
-    version_text = ".".join(map(str, upstream_version))
-
-    if local_version is not None and upstream_version <= local_version:
+    upstream = newest_published_spec(local_version)
+    if upstream is None:
         set_output("changed", "false")
-        set_output("version", version_text)
         return 0
-
+    upstream_version, upstream_name, content = upstream
+    version_text = ".".join(map(str, upstream_version))
     destination = OPENAPI_DIR / upstream_name
-    download_spec(download_url, destination)
+    save_spec(content, destination)
     for path in OPENAPI_DIR.glob("firefly-iii-*-v1.yaml"):
         if path != destination and version_from_name(path.name) is not None:
             path.unlink()
