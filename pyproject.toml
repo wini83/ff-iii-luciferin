@@ -23,6 +23,9 @@ classifiers = [
 dependencies = [
     "aenum>=3.1.16",
     "httpx",
+    "pydantic>=2",
+    "pydantic-core>=2",
+    "typing-extensions>=4",
 ]
 
 # --------------------

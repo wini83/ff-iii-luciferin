@@ -82,9 +82,7 @@ jobs:
         run: uv run pytest --cov=ff_iii_luciferin --cov-fail-under=75
 
       - name: Build and verify distributions
-        run: |
-          uv build --clear
-          uv run twine check --strict dist/*
+        run: bash scripts/verify_package.sh
 
       - name: Upload verified distributions
         uses: actions/upload-artifact@v7
