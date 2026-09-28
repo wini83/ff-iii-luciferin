@@ -33,7 +33,18 @@ DEFAULT_TIMEOUT = httpx.Timeout(
 
 
 class FireflyClient:
-    """Minimal wrapper around the Firefly III REST API."""
+    """Async client for the supported Firefly III endpoints.
+
+    Pass the instance root URL without ``/api/v1`` and a personal access
+    token. Always call :meth:`close` when finished, typically in a ``finally``
+    block. Listing methods return handwritten domain models; the generated
+    OpenAPI transport models remain internal.
+
+    Args:
+        base_url: Firefly III instance root, for example
+            ``https://firefly.example``. A trailing slash is accepted.
+        token: Personal access token sent as a bearer token.
+    """
 
     def __init__(self, base_url: str, token: str) -> None:
         self.base_url = base_url.rstrip("/")
@@ -71,11 +82,23 @@ class FireflyClient:
             raise FireflyAPIError(f"Request failed: {exc}") from exc
 
     async def close(self) -> None:
-        """Close the underlying HTTP client."""
+        """Release the underlying HTTP connections.
+
+        Call this once after the final request. The client does not implement
+        an async context manager.
+        """
         await self._client.aclose()
 
     async def get_about(self) -> SystemInfo:
-        """Return Firefly III version and environment information."""
+        """Read version and environment information from ``/api/v1/about``.
+
+        Returns:
+            System information. Individual fields may be ``None`` when Firefly
+            III omits them.
+
+        Raises:
+            FireflyAPIError: The request fails or the response is invalid.
+        """
         response = await self._request("get", f"{self.base_url}/api/v1/about")
         return validate_response_about(response)
 
@@ -146,10 +169,28 @@ class FireflyClient:
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[SimplifiedTx]:
-        """
-        Fetch and return all successfully mapped transactions.
+        """Fetch single-split transactions across Firefly III pages.
 
-        Rejected transactions (multipart / invalid) are silently skipped.
+        Multipart groups and responses that cannot be mapped are logged and
+        skipped. The result is therefore not guaranteed to contain every
+        transaction group reported by Firefly III. Use
+        ``fetch_transactions_with_stats`` to count those skipped groups.
+
+        Args:
+            tx_type: Firefly III transaction type filter. Defaults to
+                ``"withdrawal"``; ``"deposit"`` and ``"transfer"`` are also
+                useful values.
+            page_size: Requested number of groups per API page.
+            max_pages: Maximum pages to request, or ``None`` to follow
+                pagination to the end.
+            start_date: Inclusive start date sent to the API, if supplied.
+            end_date: Inclusive end date sent to the API, if supplied.
+
+        Returns:
+            Successfully mapped transactions in API order.
+
+        Raises:
+            FireflyAPIError: A request fails or a page has an invalid schema.
         """
         transactions: list[SimplifiedTx] = []
 
@@ -172,7 +213,19 @@ class FireflyClient:
     async def fetch_categories(
         self, limit: int = 1000, simplified: bool = False
     ) -> list[SimplifiedCategory]:
-        """Retrieve categories from Firefly III."""
+        """Fetch all categories across Firefly III pages.
+
+        Args:
+            limit: Requested number of categories per API page.
+            simplified: Retained for compatibility; currently ignored. The
+                method always returns ``SimplifiedCategory`` objects.
+
+        Returns:
+            Mapped categories in API order.
+
+        Raises:
+            FireflyAPIError: A request fails or the response is invalid.
+        """
         url = f"{self.base_url}/api/v1/categories"
         params: dict[str, Any] = {"limit": limit}
         page = 1
@@ -193,8 +246,17 @@ class FireflyClient:
         return categories
 
     async def get_transaction(self, transaction_id: int) -> SimplifiedTx:
-        """
-        Fetch a single transaction by ID and return it as a domain model.
+        """Fetch one single-split transaction by Firefly III group ID.
+
+        Args:
+            transaction_id: Firefly III transaction group ID.
+
+        Returns:
+            The mapped transaction.
+
+        Raises:
+            FireflyAPIError: The request or validation fails, or the group
+                has multiple splits or cannot be mapped.
         """
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
 
@@ -204,7 +266,26 @@ class FireflyClient:
     async def update_transaction(
         self, transaction_id: int, update: TransactionUpdate
     ) -> SimplifiedTx:
-        """Update selected fields for a given transaction."""
+        """Update selected fields of a single-split transaction.
+
+        Firefly III rules and webhooks are enabled for this request. Supplying
+        ``tags`` replaces the full tag list; use ``build_add_tag_payload`` to
+        preserve existing tags while adding one. The returned response must
+        still be mappable as a single-split transaction.
+
+        Args:
+            transaction_id: Firefly III transaction group ID.
+            update: Non-empty selection of description, notes, tags, and/or
+                category ID.
+
+        Returns:
+            The mapped transaction returned by Firefly III after the update.
+
+        Raises:
+            ValueError: No update field was supplied.
+            FireflyAPIError: The request or validation fails, or the returned
+                transaction cannot be mapped.
+        """
         url = f"{self.base_url}/api/v1/transactions/{transaction_id}"
         split_update: dict[str, Any] = {}
         if update.description is not None:
