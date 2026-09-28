@@ -1,0 +1,65 @@
+name: Firefly III E2E
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  firefly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv sync --dev
+
+      - name: Start disposable Firefly III
+        run: |
+          docker volume create firefly-e2e-db
+          docker pull fireflyiii/core:version-6.7.4
+          docker run --rm \
+            --entrypoint sh \
+            -v firefly-e2e-db:/var/www/html/storage/database \
+            fireflyiii/core:version-6.7.4 \
+            -c 'touch /var/www/html/storage/database/database.sqlite'
+          docker run -d --name firefly-e2e \
+            -p 127.0.0.1:18080:8080 \
+            -v firefly-e2e-db:/var/www/html/storage/database \
+            -e APP_ENV=testing \
+            -e APP_KEY=base64:QHnzwPcPVQCuxm+6w8DOb/Kt+G57e4LhbBmH9V7KZqg= \
+            -e APP_URL=http://127.0.0.1:18080 \
+            -e SITE_OWNER=e2e@example.invalid \
+            -e DB_CONNECTION=sqlite \
+            -e MAIL_MAILER=log \
+            fireflyiii/core:version-6.7.4
+
+      - name: Create test user and token
+        run: |
+          for attempt in {1..60}; do
+            if curl --silent --fail http://127.0.0.1:18080/login > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          docker exec firefly-e2e php artisan system:create-first-user e2e@example.invalid > /dev/null
+          docker cp scripts/e2e/create_token.php firefly-e2e:/tmp/create_token.php
+          docker exec firefly-e2e php /tmp/create_token.php > /dev/null
+          token="$(docker exec firefly-e2e cat /tmp/e2e-token)"
+          echo "::add-mask::$token"
+          echo "FIREFLY_E2E_TOKEN=$token" >> "$GITHUB_ENV"
+
+      - name: Run live client test
+        env:
+          FIREFLY_E2E_URL: http://127.0.0.1:18080
+        run: uv run pytest -q tests/test_firefly_e2e.py
+
+      - name: Firefly logs on failure
+        if: failure()
+        run: docker logs --tail 150 firefly-e2e || true
