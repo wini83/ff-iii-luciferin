@@ -59,3 +59,4 @@ def test_simplified_tx_account_fields_default_to_none() -> None:
 
     assert tx.source_account is None
     assert tx.destination_account is None
+    assert tx.external_id is None

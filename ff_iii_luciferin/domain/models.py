@@ -87,3 +87,4 @@ class SimplifiedTx(SimplifiedItem):
     type: TxType
     source_account: SimplifiedAccountRef | None = None
     destination_account: SimplifiedAccountRef | None = None
+    external_id: str | None = None

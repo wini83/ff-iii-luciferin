@@ -188,6 +188,7 @@ def map_transaction(tx: TransactionRead) -> TransactionMapResult:
         fx=fx,
         source_account=source_account,
         destination_account=destination_account,
+        external_id=split.external_id,
     )
 
     return TransactionMapResult(tx=simple_tx, reason=None)
