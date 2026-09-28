@@ -71,6 +71,9 @@ def test_live_firefly_client() -> None:
 
         client = FireflyClient(base_url, token)
         try:
+            about = await client.get_about()
+            assert about.version
+
             categories = await client.fetch_categories(limit=1)
             assert any(item.id == category_id for item in categories)
 

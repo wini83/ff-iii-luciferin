@@ -10,11 +10,12 @@ import httpx
 from ff_iii_luciferin.api.errors import FireflyAPIError
 from ff_iii_luciferin.api.transaction_update import TransactionUpdate
 from ff_iii_luciferin.api.validators import (
+    validate_response_about,
     validate_response_category_array,
     validate_response_single_tx,
     validate_response_transaction_array,
 )
-from ff_iii_luciferin.domain.models import SimplifiedCategory, SimplifiedTx
+from ff_iii_luciferin.domain.models import SimplifiedCategory, SimplifiedTx, SystemInfo
 from ff_iii_luciferin.mappers.category_mapper import map_category
 from ff_iii_luciferin.mappers.transaction_mapper import (
     TransactionMapResult,
@@ -72,6 +73,11 @@ class FireflyClient:
     async def close(self) -> None:
         """Close the underlying HTTP client."""
         await self._client.aclose()
+
+    async def get_about(self) -> SystemInfo:
+        """Return Firefly III version and environment information."""
+        response = await self._request("get", f"{self.base_url}/api/v1/about")
+        return validate_response_about(response)
 
     async def _iter_transaction_map_results(
         self,
