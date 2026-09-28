@@ -13,7 +13,9 @@ import urllib.request
 from pathlib import Path
 from typing import cast
 
-RELEASES_URL = "https://api.github.com/repos/firefly-iii/firefly-iii/releases?per_page=100"
+RELEASES_URL = (
+    "https://api.github.com/repos/firefly-iii/firefly-iii/releases?per_page=100"
+)
 API_DOCS_RAW_URL = "https://raw.githubusercontent.com/firefly-iii/api-docs"
 RELEASE_PATTERN = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 SPEC_PATTERN = re.compile(r"^firefly-iii-v?(\d+)\.(\d+)\.(\d+)-v1\.yaml$")
@@ -111,9 +113,7 @@ def save_spec(content: bytes, destination: Path) -> None:
     temporary_path.replace(destination)
 
 
-def patch_known_upstream_issues(
-    version: tuple[int, int, int], content: bytes
-) -> bytes:
+def patch_known_upstream_issues(version: tuple[int, int, int], content: bytes) -> bytes:
     if version != BUGGY_BUDGET_CHART_VERSION:
         return content
 
