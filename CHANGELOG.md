@@ -1,3 +1,15 @@
+## v1.1.0 (2026-09-28)
+
+### Feat
+
+- **ci**: prepare draft releases and publish with API tokens (#60)
+- add simplified account refs to transactions and regenerate Firefly III client for API v6.5.5
+
+### Fix
+
+- **openapi**: fetch latest published stable spec from version branches (#53)
+- version tag of openapi-gen image
+
 ## v1.0.0 (2026-04-09)
 
 ### Feat
