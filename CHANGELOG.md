@@ -1,3 +1,9 @@
+## v1.2.1 (2026-09-28)
+
+### Fix
+
+- format demo seed before release (#69)
+
 ## v1.2.0 (2026-09-28)
 
 ### Feat
