@@ -46,11 +46,21 @@ The client requires access to your Firefly III instance and a personal access to
 Provide them via environment variables:
 
 ````env
-FIREFLY_URL=https://your-firefly-instance/api
+FIREFLY_URL=https://your-firefly-instance
 FIREFLY_TOKEN=your_access_token
 ````
 
 Using `python-dotenv` is optional but recommended for local development.
+
+The URL is the instance root; the client adds `/api/v1` to its requests.
+
+The `Firefly III E2E` workflow starts a disposable Firefly III with SQLite,
+creates a test user and personal access token, and runs
+`tests/test_firefly_e2e.py` against its real HTTP API. The test creates its own
+accounts, categories, and transactions. For a manual run, set
+`FIREFLY_E2E_URL` to the root URL and `FIREFLY_E2E_TOKEN` to a token for an
+**isolated test instance**, then run `uv run pytest tests/test_firefly_e2e.py`.
+Without those variables, the test is skipped.
 
 ---
 

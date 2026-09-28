@@ -160,6 +160,9 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 
+[tool.pytest.ini_options]
+markers = ["e2e: requires a disposable Firefly III instance and a personal access token"]
+
 [project.urls]
 Homepage = "https://github.com/wini83/ff-iii-luciferin"
 Repository = "https://github.com/wini83/ff-iii-luciferin"
