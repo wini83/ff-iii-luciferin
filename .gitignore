@@ -208,6 +208,7 @@ __marimo__/
 
 .idea/
 /examples/.env
+/.firefly-demo/
 
 *.patch
 .codex

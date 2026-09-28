@@ -62,6 +62,34 @@ accounts, categories, and transactions. For a manual run, set
 **isolated test instance**, then run `uv run pytest tests/test_firefly_e2e.py`.
 Without those variables, the test is skipped.
 
+### Local Firefly III demo
+
+With Docker and Python 3 installed, run from the repository root:
+
+```bash
+bash scripts/demo/start.sh
+set -a; source .firefly-demo/env; set +a
+uv run python examples/min_usage_search.py
+```
+
+The script starts Firefly III on `http://127.0.0.1:18080`, creates an isolated
+SQLite database and API token, and seeds categories, accounts, withdrawals, a
+deposit, and a transfer. It leaves the container running. Rerunning the script
+reuses its data without duplicating seed records. Your existing `examples/.env`
+is not changed; shell variables from `.firefly-demo/env` take precedence.
+
+New instances use `fireflyiii/core:latest`, so CI checks the current Firefly III
+API. To reproduce a specific version, set for example
+`FIREFLY_DEMO_IMAGE=fireflyiii/core:version-6.7.4` when starting. Existing
+containers keep their original image. To upgrade one while retaining its SQLite
+database, run `bash scripts/demo/stop.sh`, then
+`docker rm ff-iii-luciferin-demo`, then `bash scripts/demo/start.sh`.
+
+Run `bash scripts/demo/stop.sh` to stop the container while keeping its data.
+The local `.firefly-demo/` directory contains the token and app key, so keep it
+private. The examples that modify a transaction have hardcoded IDs: use an ID
+shown by `min_usage_search.py` before running those examples.
+
 ---
 
 ## 🚀 Quick Start
