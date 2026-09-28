@@ -38,9 +38,7 @@ def request(
         ) from exc
 
 
-def list_all(
-    path: str, params: dict[str, str] | None = None
-) -> list[dict[str, Any]]:
+def list_all(path: str, params: dict[str, str] | None = None) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     page = 1
     while True:
@@ -94,40 +92,95 @@ def main() -> None:
     savings = account_ids["Demo savings"]
     rows: list[
         tuple[
-            str, str, str, str, str | None, str | None, str | None,
-            str | None, list[str],
+            str,
+            str,
+            str,
+            str,
+            str | None,
+            str | None,
+            str | None,
+            str | None,
+            list[str],
         ]
     ] = [
         (
-            "groceries", "withdrawal", "12.50", "Corner shop", checking, None,
-            "Demo corner shop", category_ids["Demo groceries"], ["demo", "food"],
+            "groceries",
+            "withdrawal",
+            "12.50",
+            "Corner shop",
+            checking,
+            None,
+            "Demo corner shop",
+            category_ids["Demo groceries"],
+            ["demo", "food"],
         ),
         (
-            "transport", "withdrawal", "4.80", "Bus ticket", checking, None,
-            "Demo transit", category_ids["Demo transport"], ["demo", "travel"],
+            "transport",
+            "withdrawal",
+            "4.80",
+            "Bus ticket",
+            checking,
+            None,
+            "Demo transit",
+            category_ids["Demo transport"],
+            ["demo", "travel"],
         ),
         (
-            "subscription", "withdrawal", "9.99", "Music subscription", checking,
-            None, "Demo streaming", category_ids["Demo subscriptions"],
+            "subscription",
+            "withdrawal",
+            "9.99",
+            "Music subscription",
+            checking,
+            None,
+            "Demo streaming",
+            category_ids["Demo subscriptions"],
             ["demo", "recurring"],
         ),
         (
-            "uncategorized", "withdrawal", "7.25", "Uncategorized purchase",
-            checking, None, "Demo kiosk", None, ["demo"],
+            "uncategorized",
+            "withdrawal",
+            "7.25",
+            "Uncategorized purchase",
+            checking,
+            None,
+            "Demo kiosk",
+            None,
+            ["demo"],
         ),
         (
-            "deposit", "deposit", "250.00", "Demo income", None, checking,
-            "Demo employer", None, ["demo", "income"],
+            "deposit",
+            "deposit",
+            "250.00",
+            "Demo income",
+            None,
+            checking,
+            "Demo employer",
+            None,
+            ["demo", "income"],
         ),
         (
-            "transfer", "transfer", "50.00", "Savings transfer", checking,
-            savings, None, None, ["demo", "transfer"],
+            "transfer",
+            "transfer",
+            "50.00",
+            "Savings transfer",
+            checking,
+            savings,
+            None,
+            None,
+            ["demo", "transfer"],
         ),
     ]
     created = 0
     for index, (
-        key, tx_type, amount, description, source_id, destination_id, other_name,
-        category_id, tags,
+        key,
+        tx_type,
+        amount,
+        description,
+        source_id,
+        destination_id,
+        other_name,
+        category_id,
+        tags,
     ) in enumerate(rows):
         external_id = f"ff-iii-luciferin-demo-{key}"
         if external_id in existing:
