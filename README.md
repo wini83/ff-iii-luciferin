@@ -3,100 +3,28 @@
 [![CI](https://github.com/wini83/ff-iii-luciferin/actions/workflows/ci.yml/badge.svg)](https://github.com/wini83/ff-iii-luciferin/actions/workflows/ci.yml)
 ![PyPI](https://img.shields.io/pypi/v/ff-iii-luciferin?include_prereleases)
 ![Python](https://img.shields.io/pypi/pyversions/ff-iii-luciferin?include_prereleases)
-![License](https://img.shields.io/pypi/l/ff-iii-luciferin?include_prereleases)
 [![codecov](https://codecov.io/gh/wini83/ff-iii-luciferin/graph/badge.svg?token=SSWFZZT4J1)](https://codecov.io/gh/wini83/ff-iii-luciferin)
 
-**ff-iii-luciferin** is a Python enrichment engine for  
-[Firefly III](https://www.firefly-iii.org/) transactions.
+**ff-iii-luciferin** is an async Python client and a small set of domain helpers
+for working with [Firefly III](https://www.firefly-iii.org/) transactions. It
+fetches transactions and categories, exposes simplified models, and updates a
+transaction's description, notes, tags, or category.
 
-It provides a clean, async-first API for post-processing financial data:
-descriptions, notes, tags, and categories — without polluting your domain logic.
+Python 3.12 or newer is required.
 
----
-
-## ✨ Key Features
-
-- 🔌 Async client for Firefly III API (built on `httpx`)
-- 📝 Update transaction **descriptions** and **notes**
-- 🏷️ Add or manage **tags**
-- 🗂️ Assign or change **categories**
-- 🏦 Preserve simplified **source/destination account** references
-- 🚫 Filter unwanted transactions (e.g. uncategorized, split-only)
-- ⚠️ Explicit handling of API, network, and data errors
-- 🧱 Generated OpenAPI client kept internal (not public API)
-
----
-
-## 📦 Installation
-
-From PyPI:
-
-````bash
-pip install ff-iii-luciferin
-````
-
-Python **3.12+** required.
-
----
-
-## ⚙️ Configuration
-
-The client requires access to your Firefly III instance and a personal access token.
-
-Provide them via environment variables:
-
-````env
-FIREFLY_URL=https://your-firefly-instance
-FIREFLY_TOKEN=your_access_token
-````
-
-Using `python-dotenv` is optional but recommended for local development.
-
-The URL is the instance root; the client adds `/api/v1` to its requests.
-
-The `Firefly III E2E` workflow starts a disposable Firefly III with SQLite,
-creates a test user and personal access token, and runs
-`tests/test_firefly_e2e.py` against its real HTTP API. The test creates its own
-accounts, categories, and transactions. For a manual run, set
-`FIREFLY_E2E_URL` to the root URL and `FIREFLY_E2E_TOKEN` to a token for an
-**isolated test instance**, then run `uv run pytest tests/test_firefly_e2e.py`.
-Without those variables, the test is skipped.
-
-### Local Firefly III demo
-
-With Docker and Python 3 installed, run from the repository root:
+## Install
 
 ```bash
-bash scripts/demo/start.sh
-set -a; source .firefly-demo/env; set +a
-uv run python examples/min_usage_search.py
+pip install ff-iii-luciferin
 ```
 
-The script starts Firefly III on `http://127.0.0.1:18080`, creates an isolated
-SQLite database and API token, and seeds categories, accounts, withdrawals, a
-deposit, and a transfer. It leaves the container running. Rerunning the script
-reuses its data without duplicating seed records. Your existing `examples/.env`
-is not changed; shell variables from `.firefly-demo/env` take precedence.
+## Quickstart
 
-New instances use `fireflyiii/core:latest`, so CI checks the current Firefly III
-API. To reproduce a specific version, set for example
-`FIREFLY_DEMO_IMAGE=fireflyiii/core:version-6.7.4` when starting. Existing
-containers keep their original image. To upgrade one while retaining its SQLite
-database, run `bash scripts/demo/stop.sh`, then
-`docker rm ff-iii-luciferin-demo`, then `bash scripts/demo/start.sh`.
+Set `FIREFLY_URL` to the **instance root** (without `/api/v1`) and
+`FIREFLY_TOKEN` to a personal access token. The client does not read environment
+variables itself; this example passes them explicitly.
 
-Run `bash scripts/demo/stop.sh` to stop the container while keeping its data.
-The local `.firefly-demo/` directory contains the token and app key, so keep it
-private. The examples that modify a transaction have hardcoded IDs: use an ID
-shown by `min_usage_search.py` before running those examples.
-
----
-
-## 🚀 Quick Start
-
-Minimal async example:
-
-````python
+```python
 import asyncio
 import os
 
@@ -108,43 +36,62 @@ async def main() -> None:
         base_url=os.environ["FIREFLY_URL"],
         token=os.environ["FIREFLY_TOKEN"],
     )
-
     try:
-        transactions = await client.fetch_transactions()
-        categories = await client.fetch_categories()
         about = await client.get_about()
         print(f"Firefly III: {about.version}")
 
-        await client.update_transaction_description(
-            transaction_id=123,
-            description="Updated description",
-        )
+        transactions = await client.fetch_transactions(max_pages=1)
+        for tx in transactions:
+            print(tx.id, tx.date, tx.amount, tx.description, tx.external_id)
 
-        await client.update_transaction_notes(
-            transaction_id=123,
-            notes="Additional notes",
-        )
-
-        await client.add_tag_to_transaction(
-            transaction_id=123,
-            tag="processed",
-        )
-
-        await client.assign_transaction_category(
-            transaction_id=123,
-            new_category_id=1,
-        )
     finally:
         await client.close()
 
+
 asyncio.run(main())
-````
+```
 
-The `examples/min_usage_search.py` script shows the current transaction search
-output with a `rich` table, including category and account columns.
+`fetch_transactions()` defaults to withdrawals; pass `tx_type` for
+another Firefly III transaction type. Multipart and invalid transactions are
+skipped during listing, while `get_transaction()` raises `FireflyAPIError` for
+an unsupported multipart transaction.
 
-## 📄 License
+## Documentation
 
-MIT License.  
+The [full documentation](https://wini83.github.io/ff-iii-luciferin/) covers
+setup, transaction updates, matching semantics, and the public API reference.
+The OpenAPI-generated transport models are implementation details and are not
+part of that reference.
 
-MIT License — see [LICENSE](LICENSE) for details.
+## Local development
+
+With Docker and Python 3 installed, start an isolated Firefly III demo and
+run a read-only example:
+
+```bash
+bash scripts/demo/start.sh
+set -a; source .firefly-demo/env; set +a
+uv run python examples/min_usage_search.py
+```
+
+The demo listens on `http://127.0.0.1:18080` and seeds accounts, categories,
+withdrawals, a deposit, and a transfer in SQLite. Repeated starts reuse the
+data without duplicating seed records. `bash scripts/demo/stop.sh` stops the
+container while keeping the database. `.firefly-demo/` contains a token and
+app key; keep it private. New containers use `fireflyiii/core:latest`; set
+`FIREFLY_DEMO_IMAGE=fireflyiii/core:version-6.7.4` to pin an image before the
+first start. An existing container keeps its image until recreated.
+
+To run the live test against an isolated instance, set `FIREFLY_E2E_URL` and
+`FIREFLY_E2E_TOKEN`, then run `uv run pytest tests/test_firefly_e2e.py`.
+Without those variables, the test is skipped. The GitHub Actions E2E workflow
+starts its own disposable instance.
+
+Build the documentation locally with:
+
+```bash
+uv sync --locked --group docs
+uv run --group docs mkdocs build --strict
+```
+
+See [LICENSE](LICENSE) for the MIT license.
