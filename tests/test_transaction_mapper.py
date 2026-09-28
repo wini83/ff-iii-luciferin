@@ -58,6 +58,7 @@ def test_map_transaction_single_split_happy_path() -> None:
         "currency_decimal_places": 2,
         "category_id": "7",
         "category_name": "Food",
+        "external_id": "bank-import-123",
     }
     tx = make_transaction_read_from_split(split_dict)
 
@@ -75,6 +76,7 @@ def test_map_transaction_single_split_happy_path() -> None:
     assert result.tx.tags == ["test"]
     assert result.tx.notes == "note"
     assert result.tx.category == SimplifiedCategory(id=7, name="Food")
+    assert result.tx.external_id == "bank-import-123"
 
 
 def test_map_transaction_maps_currency_and_type() -> None:
@@ -97,6 +99,7 @@ def test_map_transaction_maps_currency_and_type() -> None:
     assert result.tx is not None
     assert result.tx.currency == Currency(code="EUR", symbol="€", decimals=2)
     assert result.tx.type == TxType.DEPOSIT
+    assert result.tx.external_id is None
 
 
 def test_map_transaction_maps_accounts() -> None:
