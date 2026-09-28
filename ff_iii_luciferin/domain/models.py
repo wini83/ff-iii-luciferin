@@ -55,6 +55,17 @@ class SimplifiedCategory:
 
 
 @dataclass(slots=True, frozen=True)
+class SystemInfo:
+    """Version and environment information reported by Firefly III."""
+
+    version: str | None
+    api_version: str | None
+    php_version: str | None
+    os: str | None
+    driver: str | None
+
+
+@dataclass(slots=True, frozen=True)
 class SimplifiedAccountRef:
     id: int
     name: str

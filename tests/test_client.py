@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from ff_iii_luciferin.api import FireflyAPIError, FireflyClient
+from ff_iii_luciferin.api import FireflyAPIError, FireflyClient, SystemInfo
 from ff_iii_luciferin.api.transaction_update import TransactionUpdate
 from ff_iii_luciferin.domain.models import (
     Currency,
@@ -23,6 +23,61 @@ from ff_iii_luciferin.mappers.transaction_mapper import TransactionMapResult
 
 BASE_URL = "https://demo.firefly.local"
 TOKEN = "test-token"
+
+
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_get_about(mock_request: MagicMock) -> None:
+    mock_request.return_value = MockResponse(
+        {
+            "data": {
+                "version": "6.7.4",
+                "api_version": "6.7.4",
+                "php_version": "8.3.0",
+                "os": "Linux",
+                "driver": "sqlite",
+            }
+        }
+    )
+
+    async def run() -> SystemInfo:
+        client = FireflyClient(BASE_URL + "/", TOKEN)
+        try:
+            return await client.get_about()
+        finally:
+            await client.close()
+
+    assert asyncio.run(run()) == SystemInfo(
+        version="6.7.4",
+        api_version="6.7.4",
+        php_version="8.3.0",
+        os="Linux",
+        driver="sqlite",
+    )
+    mock_request.assert_awaited_once_with("get", f"{BASE_URL}/api/v1/about")
+
+
+@pytest.mark.parametrize("payload", [{}, {"data": None}, {"data": {"version": 123}}])
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_get_about_invalid_response(
+    mock_request: MagicMock, payload: dict[str, Any]
+) -> None:
+    mock_request.return_value = MockResponse(payload)
+
+    async def run() -> None:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            await client.get_about()
+        finally:
+            await client.close()
+
+    with pytest.raises(FireflyAPIError, match="system information"):
+        asyncio.run(run())
 
 
 def _transaction_split_payload(

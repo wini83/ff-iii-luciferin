@@ -112,6 +112,8 @@ async def main() -> None:
     try:
         transactions = await client.fetch_transactions()
         categories = await client.fetch_categories()
+        about = await client.get_about()
+        print(f"Firefly III: {about.version}")
 
         await client.update_transaction_description(
             transaction_id=123,
