@@ -135,6 +135,10 @@ dev = [
     "packaging>=24",
     "twine>=6",
 ]
+docs = [
+    "mkdocs-material>=9.6,<10",
+    "mkdocstrings[python]>=0.27,<1",
+]
 
 # --------------------
 # Setuptools
@@ -165,6 +169,7 @@ markers = ["e2e: requires a disposable Firefly III instance and a personal acces
 
 [project.urls]
 Homepage = "https://github.com/wini83/ff-iii-luciferin"
+Documentation = "https://wini83.github.io/ff-iii-luciferin/"
 Repository = "https://github.com/wini83/ff-iii-luciferin"
 Issues = "https://github.com/wini83/ff-iii-luciferin/issues"
 Changelog = "https://github.com/wini83/ff-iii-luciferin/blob/main/CHANGELOG.md"

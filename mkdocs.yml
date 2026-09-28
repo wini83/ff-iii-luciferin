@@ -1,0 +1,39 @@
+site_name: ff-iii-luciferin
+site_description: Python client and domain helpers for Firefly III transactions.
+site_url: https://wini83.github.io/ff-iii-luciferin/
+repo_name: wini83/ff-iii-luciferin
+repo_url: https://github.com/wini83/ff-iii-luciferin
+
+theme:
+  name: material
+  language: en
+  features:
+    - content.code.copy
+    - navigation.footer
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            members_order: source
+            filters:
+              - "!^_"
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.highlight
+
+nav:
+  - Overview: index.md
+  - Getting started: getting-started.md
+  - Transactions and matching: transactions.md
+  - API reference:
+      - Client: reference/client.md
+      - Models: reference/models.md
+      - Helpers and errors: reference/helpers.md
