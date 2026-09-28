@@ -3,7 +3,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 state="$root/.firefly-demo"
-image="fireflyiii/core:version-6.7.4"
+image="${FIREFLY_DEMO_IMAGE:-fireflyiii/core:latest}"
 container="ff-iii-luciferin-demo"
 volume="ff-iii-luciferin-demo-db"
 url="http://127.0.0.1:18080"
@@ -40,6 +40,12 @@ if ! docker container inspect "$container" >/dev/null 2>&1; then
     "$image" >/dev/null
 elif [[ "$(docker inspect -f '{{.State.Running}}' "$container")" != true ]]; then
   docker start "$container" >/dev/null
+fi
+
+current_image="$(docker inspect -f '{{.Config.Image}}' "$container")"
+if [[ "$current_image" != "$image" ]]; then
+  echo "Existing demo container uses $current_image; requested $image." >&2
+  echo "Stop and remove the container to change images; the database volume is preserved." >&2
 fi
 
 ready=false
