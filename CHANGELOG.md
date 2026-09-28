@@ -1,3 +1,10 @@
+## v1.2.0 (2026-09-28)
+
+### Feat
+
+- include external ID in simplified transactions (#66)
+- expose Firefly III system information (#32) (#64)
+
 ## v1.1.0 (2026-09-28)
 
 ### Feat
