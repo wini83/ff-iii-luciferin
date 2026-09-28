@@ -1,3 +1,9 @@
+## v1.2.0 (2026-09-28)
+
+### Feat
+
+- expose Firefly III system information (#32) (#64)
+
 ## v1.1.0 (2026-09-28)
 
 ### Feat
