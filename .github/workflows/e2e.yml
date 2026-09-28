@@ -48,7 +48,7 @@ jobs:
             fi
             sleep 2
           done
-          docker exec firefly-e2e php artisan system:create-first-user e2e@example.invalid
+          docker exec firefly-e2e php artisan system:create-first-user e2e@example.invalid > /dev/null
           docker cp scripts/e2e/create_token.php firefly-e2e:/tmp/create_token.php
           token="$(docker exec firefly-e2e php /tmp/create_token.php)"
           echo "::add-mask::$token"

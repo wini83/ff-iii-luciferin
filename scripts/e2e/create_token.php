@@ -1,6 +1,7 @@
 <?php
 
 // Run inside the throwaway Firefly III container after system:create-first-user.
+require '/var/www/html/vendor/autoload.php';
 require '/var/www/html/bootstrap/app.php';
 
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
