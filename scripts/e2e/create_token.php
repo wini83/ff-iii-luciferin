@@ -11,4 +11,4 @@ $user = FireflyIII\User::where('email', 'e2e@example.invalid')->firstOrFail();
 $repository = $app->make(Laravel\Passport\ClientRepository::class);
 $repository->createPersonalAccessGrantClient('E2E personal access client', null);
 
-echo $user->createToken('e2e-tests')->accessToken;
+file_put_contents('/tmp/e2e-token', $user->createToken('e2e-tests')->accessToken);

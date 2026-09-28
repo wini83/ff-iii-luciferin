@@ -19,6 +19,7 @@ def test_live_firefly_client() -> None:
     token = os.environ.get("FIREFLY_E2E_TOKEN")
     if not base_url or not token:
         pytest.skip("Set FIREFLY_E2E_URL and FIREFLY_E2E_TOKEN to run E2E tests")
+    assert base_url is not None and token is not None
 
     async def run() -> None:
         headers = {
