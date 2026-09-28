@@ -35,8 +35,14 @@ def test_live_firefly_client() -> None:
             category_id = int(category_response.json()["data"]["id"])
 
             account_response = await setup.post(
-                "/api/v1/accounts", json={"name": "E2E checking", "type": "asset"}
+                "/api/v1/accounts",
+                json={
+                    "name": "E2E checking",
+                    "type": "asset",
+                    "account_role": "defaultAsset",
+                },
             )
+            assert account_response.is_success, account_response.text
             account_response.raise_for_status()
             account_id = account_response.json()["data"]["id"]
 
@@ -59,6 +65,7 @@ def test_live_firefly_client() -> None:
                         ],
                     },
                 )
+                assert response.is_success, response.text
                 response.raise_for_status()
                 ids.append(int(response.json()["data"]["id"]))
 
