@@ -178,8 +178,10 @@ class FireflyClient:
 
         Args:
             tx_type: Firefly III transaction type filter. Defaults to
-                ``"withdrawal"``; ``"deposit"`` and ``"transfer"`` are also
-                useful values.
+                ``"withdrawal"``. Use ``"deposit"`` or ``"transfer"`` for
+                a single type, or ``"all"`` to request all types from the API.
+                Only single-split withdrawals, deposits, and transfers can be
+                returned as ``SimplifiedTx`` objects.
             page_size: Requested number of groups per API page.
             max_pages: Maximum pages to request, or ``None`` to follow
                 pagination to the end.

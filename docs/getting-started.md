@@ -37,7 +37,10 @@ asyncio.run(main())
 ```
 
 `fetch_transactions()` defaults to withdrawals. Supply `tx_type="transfer"`
-or `tx_type="deposit"` when those are needed. `max_pages=1` limits the example
+or `tx_type="deposit"` when those are needed, or `tx_type="all"` to request all
+types from Firefly III. The returned list still includes only supported
+single-split transactions; see [Transactions and matching](transactions.md)
+for the mapping limits. `max_pages=1` limits the example
 to one API page; omit it to follow pagination until the last page. You can also
 pass `start_date` and `end_date` as Python `date` values.
 
