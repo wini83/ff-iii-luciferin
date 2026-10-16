@@ -21,6 +21,7 @@ RELEASE_PATTERN = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 SPEC_PATTERN = re.compile(r"^firefly-iii-v?(\d+)\.(\d+)\.(\d+)-v1\.yaml$")
 OPENAPI_DIR = Path("openapi")
 BUGGY_BUDGET_CHART_VERSION = (6, 7, 4)
+BUGGY_RELEASE_NOTES_VERSION = (6, 7, 8)
 
 
 def version_from_name(name: str) -> tuple[int, int, int] | None:
@@ -114,6 +115,8 @@ def save_spec(content: bytes, destination: Path) -> None:
 
 
 def patch_known_upstream_issues(version: tuple[int, int, int], content: bytes) -> bytes:
+    if version == BUGGY_RELEASE_NOTES_VERSION:
+        return patch_release_notes_parameter(content)
     if version != BUGGY_BUDGET_CHART_VERSION:
         return content
 
@@ -134,6 +137,30 @@ def patch_known_upstream_issues(version: tuple[int, int, int], content: bytes) -
     if section.count(old_id) != 1 or content.count(old_id) != 2:
         raise RuntimeError("Unexpected budget chart operationIds in 6.7.4 spec")
     return content[:start] + section.replace(old_id, new_id, 1) + content[end:]
+
+
+def patch_release_notes_parameter(content: bytes) -> bytes:
+    """Correct the optional path parameter published in the 6.7.8 spec."""
+    path = b"  /v1/release-notes/{version}:\n"
+    if content.count(path) != 1:
+        raise RuntimeError("Expected release notes endpoint missing or duplicated")
+    start = content.index(path)
+    next_path = re.search(rb"^  /", content[start + len(path) :], re.MULTILINE)
+    end = start + len(path) + next_path.start() if next_path else len(content)
+    section = content[start:end]
+    old_parameter = (
+        b"        - in: path\n          name: version\n          required: false\n"
+    )
+    new_parameter = old_parameter.replace(b"required: false", b"required: true")
+    if section.count(new_parameter) == 1 and section.count(old_parameter) == 0:
+        return content  # Upstream has already corrected the parameter.
+    if section.count(old_parameter) != 1 or section.count(new_parameter) != 0:
+        raise RuntimeError("Unexpected release notes version parameter in 6.7.8 spec")
+    return (
+        content[:start]
+        + section.replace(old_parameter, new_parameter, 1)
+        + content[end:]
+    )
 
 
 def main() -> int:
