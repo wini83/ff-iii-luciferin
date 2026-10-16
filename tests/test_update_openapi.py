@@ -94,3 +94,52 @@ def test_rejects_unexpected_duplicate_operation_ids() -> None:
     )
     with pytest.raises(RuntimeError, match="Unexpected budget chart"):
         update_openapi.patch_known_upstream_issues((6, 7, 4), content)
+
+
+@pytest.mark.parametrize("trailing_endpoint", [b"", b"  /v1/other:\n    get:\n"])
+def test_fixes_release_notes_path_parameter(trailing_endpoint: bytes) -> None:
+    parameter = (
+        b"        - in: path\n          name: version\n          required: false\n"
+    )
+    prefix = b"openapi: 3.0.0\npaths:\n  /v1/previous:\n    get:\n" + parameter
+    endpoint = (
+        b"  /v1/release-notes/{version}:\n"
+        b"    get:\n"
+        b"      parameters:\n"
+        b"        - in: header\n"
+        b"          name: X-Trace-Id\n"
+        b"          required: false\n"
+    )
+    suffix = trailing_endpoint + b"components:\n  schemas: {}\n"
+    content = prefix + endpoint + parameter + suffix
+    expected = (
+        prefix
+        + endpoint
+        + parameter.replace(b"required: false", b"required: true")
+        + suffix
+    )
+
+    patched = update_openapi.patch_known_upstream_issues((6, 7, 8), content)
+
+    assert patched == expected
+    assert update_openapi.patch_known_upstream_issues((6, 7, 8), patched) == patched
+    assert update_openapi.patch_known_upstream_issues((6, 7, 9), content) == content
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        b"openapi: 3.0.0\n",
+        b"  /v1/release-notes/{version}:\n    get:\n",
+        (
+            b"  /v1/release-notes/{version}:\n    get:\n"
+            b"  /v1/other:\n"
+            b"        - in: path\n"
+            b"          name: version\n"
+            b"          required: false\n"
+        ),
+    ],
+)
+def test_rejects_unexpected_release_notes_parameter(content: bytes) -> None:
+    with pytest.raises(RuntimeError, match="release notes"):
+        update_openapi.patch_known_upstream_issues((6, 7, 8), content)
