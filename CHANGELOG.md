@@ -1,3 +1,9 @@
+## v1.2.2 (2026-10-16)
+
+### Fix
+
+- **openapi**: correct invalid release notes parameter in Firefly III 6.7.8 (#78)
+
 ## v1.2.1 (2026-09-28)
 
 ### Fix
