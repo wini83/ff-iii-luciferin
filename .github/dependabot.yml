@@ -59,7 +59,9 @@ updates:
           - "patch"
 
     commit-message:
-      prefix: "deps"
+      prefix: "build"
+      prefix-development: "build"
+      include: "scope"
 
     labels:
       - "dependencies"
@@ -84,6 +86,8 @@ updates:
 
     commit-message:
       prefix: "ci"
+      prefix-development: "ci"
+      include: "scope"
 
     labels:
       - "dependencies"
