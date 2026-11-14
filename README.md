@@ -91,7 +91,9 @@ Build the documentation locally with:
 
 ```bash
 uv sync --locked --group docs
-uv run --group docs mkdocs build --strict
+uv run --locked --group docs zensical build --strict
 ```
+
+Preview the documentation locally with `uv run --group docs zensical serve`.
 
 See [LICENSE](LICENSE) for the MIT license.

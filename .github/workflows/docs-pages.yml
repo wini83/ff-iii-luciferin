@@ -27,7 +27,7 @@ jobs:
       - name: Install documentation dependencies
         run: uv sync --locked --group docs
       - name: Build documentation
-        run: uv run --group docs mkdocs build --strict
+        run: uv run --locked --group docs zensical build --strict
       - name: Configure GitHub Pages
         if: github.event_name == 'push'
         uses: actions/configure-pages@v6
