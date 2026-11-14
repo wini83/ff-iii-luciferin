@@ -1,0 +1,41 @@
+[project]
+site_name = "ff-iii-luciferin"
+site_description = "Python client and domain helpers for Firefly III transactions."
+site_url = "https://wini83.github.io/ff-iii-luciferin/"
+repo_name = "wini83/ff-iii-luciferin"
+repo_url = "https://github.com/wini83/ff-iii-luciferin"
+nav = [
+  { "Overview" = "index.md" },
+  { "Getting started" = "getting-started.md" },
+  { "Transactions and matching" = "transactions.md" },
+  { "API reference" = [
+    { "Client" = "reference/client.md" },
+    { "Models" = "reference/models.md" },
+    { "Helpers and errors" = "reference/helpers.md" },
+  ] },
+]
+
+[project.theme]
+variant = "classic"
+language = "en"
+features = ["content.code.copy", "navigation.footer"]
+
+[project.plugins.search]
+
+[project.plugins.mkdocstrings.handlers.python]
+paths = ["."]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+show_source = false
+show_root_heading = true
+show_root_full_path = false
+show_signature_annotations = true
+docstring_style = "google"
+members_order = "source"
+filters = ["!^_"]
+
+[project.markdown_extensions.admonition]
+
+[project.markdown_extensions.pymdownx.superfences]
+
+[project.markdown_extensions.pymdownx.highlight]
