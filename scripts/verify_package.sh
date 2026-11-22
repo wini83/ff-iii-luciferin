@@ -6,7 +6,7 @@ uv run twine check --strict dist/*
 
 package_env="$(mktemp -d)"
 trap 'rm -rf "$package_env"' EXIT
-uv venv --python 3.12 "$package_env"
+uv venv --python "$(uv run python -c 'import sys; print(sys.executable)')" "$package_env"
 uv pip install --python "$package_env/bin/python" dist/*.whl
 (
   cd "$package_env"

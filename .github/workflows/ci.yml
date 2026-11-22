@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,10 +23,7 @@ jobs:
         run: pip install uv
 
       - name: Sync dependencies (dev)
-        run: uv sync --dev
-
-      - name: Install package (editable)
-        run: uv pip install -e .
+        run: uv sync --dev --locked
 
       - name: Lint (ruff)
         run: uv run ruff check .
@@ -37,7 +34,33 @@ jobs:
       - name: Type check (mypy)
         run: uv run mypy .
 
+  compatibility:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Sync dependencies (dev)
+        run: uv sync --dev --locked
+
       - name: Run tests with coverage
+        if: matrix.python-version == '3.12'
         run: |
           uv run pytest \
             --cov=ff_iii_luciferin \
@@ -45,10 +68,27 @@ jobs:
             --cov-report=xml \
             --cov-fail-under=75
 
+      - name: Run tests
+        if: matrix.python-version != '3.12'
+        run: uv run pytest
+
       - name: Verify built package in a clean environment
         run: bash scripts/verify_package.sh
-  
+
       - name: Upload coverage reports to Codecov
+        if: matrix.python-version == '3.12'
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # Preserve the existing required check name and gate every Python version.
+  test:
+    needs: [quality, compatibility]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all checks passed
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          COMPATIBILITY_RESULT: ${{ needs.compatibility.result }}
+        run: test "$QUALITY_RESULT" = success && test "$COMPATIBILITY_RESULT" = success
