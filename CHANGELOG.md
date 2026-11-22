@@ -1,3 +1,9 @@
+## v1.3.0 (2026-11-22)
+
+### Feat
+
+- **transactions**: support reconciliation state updates (#94)
+
 ## v1.2.2 (2026-10-16)
 
 ### Fix
