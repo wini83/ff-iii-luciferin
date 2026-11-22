@@ -6,7 +6,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import httpx
 import pytest
@@ -95,6 +95,7 @@ def _transaction_split_payload(
 ) -> dict[str, Any]:
     return {
         "type": "withdrawal",
+        "transaction_journal_id": "456",
         "date": date,
         "amount": amount,
         "description": description,
@@ -309,6 +310,8 @@ def test_get_transaction_invalid_dto_raises(mock_request: MagicMock) -> None:
             TransactionUpdate(category_id=42),
             {"category_id": "42"},
         ),
+        (TransactionUpdate(reconciled=True), {"reconciled": True}),
+        (TransactionUpdate(reconciled=False), {"reconciled": False}),
     ],
 )
 @patch(
@@ -338,10 +341,14 @@ def test_update_transaction_fields(
     result = asyncio.run(run())
     assert result.id == 123
     assert result.description == "Updated"
+    assert mock_request.await_count == 2
+    assert mock_request.await_args_list[0] == call(
+        "get", f"{BASE_URL}/api/v1/transactions/123"
+    )
     assert mock_request.call_args.kwargs["json"] == {
         "apply_rules": True,
         "fire_webhooks": True,
-        "transactions": [expected_patch],
+        "transactions": [{**expected_patch, "transaction_journal_id": "456"}],
     }
 
 
@@ -603,3 +610,82 @@ class MockBadJsonResponse:
 
     def raise_for_status(self) -> None:
         return
+
+
+@pytest.mark.parametrize("state", [True, False])
+@pytest.mark.parametrize(
+    "apply_rules,fire_webhooks", [(False, False), (True, False), (False, True)]
+)
+@patch("ff_iii_luciferin.api.client.httpx.AsyncClient.request", new_callable=AsyncMock)
+def test_update_reconciliation_round_trip(
+    mock_request: MagicMock, state: bool, apply_rules: bool, fire_webhooks: bool
+) -> None:
+    before = _transaction_split_payload("Invoice", notes="Keep notes", tags=["booked"])
+    before["reconciled"] = not state
+    after = {**before, "reconciled": state}
+    mock_request.side_effect = [
+        MockResponse(_transaction_single_response("123", before)),
+        MockResponse(_transaction_single_response("123", after)),
+    ]
+
+    async def run() -> SimplifiedTx:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            return await client.update_transaction(
+                123,
+                TransactionUpdate(reconciled=state),
+                apply_rules=apply_rules,
+                fire_webhooks=fire_webhooks,
+            )
+        finally:
+            await client.close()
+
+    result = asyncio.run(run())
+    assert result.reconciled is state
+    assert result.notes == "Keep notes"
+    assert result.tags == ["booked"]
+    assert mock_request.await_args_list == [
+        call("get", f"{BASE_URL}/api/v1/transactions/123"),
+        call(
+            "put",
+            f"{BASE_URL}/api/v1/transactions/123",
+            json={
+                "apply_rules": apply_rules,
+                "fire_webhooks": fire_webhooks,
+                "transactions": [
+                    {"transaction_journal_id": "456", "reconciled": state}
+                ],
+            },
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    "invalid", ["multipart", "invalid", "missing_journal", "http_error"]
+)
+@patch("ff_iii_luciferin.api.client.httpx.AsyncClient.request", new_callable=AsyncMock)
+def test_update_rejects_unsupported_current_transaction_before_put(
+    mock_request: MagicMock, invalid: str
+) -> None:
+    split = _transaction_split_payload("Invoice")
+    if invalid == "missing_journal":
+        split.pop("transaction_journal_id")
+    if invalid == "invalid":
+        split.pop("currency_symbol")
+    splits = [split, split] if invalid == "multipart" else [split]
+    mock_request.return_value = MockResponse(
+        {"data": _transaction_read_payload("123", splits)}
+    )
+    if invalid == "http_error":
+        mock_request.side_effect = httpx.ConnectError("unavailable")
+
+    async def run() -> None:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            await client.update_transaction(123, TransactionUpdate(reconciled=True))
+        finally:
+            await client.close()
+
+    with pytest.raises(FireflyAPIError):
+        asyncio.run(run())
+    mock_request.assert_awaited_once_with("get", f"{BASE_URL}/api/v1/transactions/123")

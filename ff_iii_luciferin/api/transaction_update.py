@@ -14,9 +14,11 @@ class TransactionUpdate:
         notes: Replacement notes; an empty string clears existing notes.
         tags: Complete replacement list of tag names.
         category_id: Firefly III category ID to assign.
+        reconciled: True to reconcile, False to undo, None to leave unchanged.
     """
 
     description: str | None = None
     notes: str | None = None
     tags: list[str] | None = None
     category_id: int | None = None
+    reconciled: bool | None = None

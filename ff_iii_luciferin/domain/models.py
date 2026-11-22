@@ -148,6 +148,8 @@ class SimplifiedTx(SimplifiedItem):
         source_account: Source account when its reference can be mapped.
         destination_account: Destination account when it can be mapped.
         external_id: External identifier supplied by Firefly III, if any.
+        reconciled: Reconciliation state, or None when not supplied.
+        transaction_journal_id: ID of the single split, distinct from group ID.
     """
 
     id: int
@@ -161,3 +163,5 @@ class SimplifiedTx(SimplifiedItem):
     source_account: SimplifiedAccountRef | None = None
     destination_account: SimplifiedAccountRef | None = None
     external_id: str | None = None
+    reconciled: bool | None = None
+    transaction_journal_id: int | None = None

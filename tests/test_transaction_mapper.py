@@ -3,6 +3,8 @@ from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 from ff_iii_luciferin.api.openapi_types import (
     TransactionTypeProperty,
 )
@@ -375,3 +377,25 @@ def test_map_transaction_rejects_invalid_type() -> None:
     result = map_transaction(tx_read)
     assert result.tx is None
     assert result.reason == "invalid"
+
+
+@pytest.mark.parametrize("state", [True, False, None])
+def test_map_transaction_preserves_reconciliation_state(state: bool | None) -> None:
+    split: dict[str, Any] = {
+        "type": "withdrawal",
+        "amount": "12.34",
+        "date": "2026-11-16T00:00:00Z",
+        "description": "Invoice",
+        "currency_code": "PLN",
+        "currency_symbol": "zł",
+        "currency_decimal_places": 2,
+        "transaction_journal_id": "9181",
+        "source_id": "1",
+        "destination_id": "2",
+    }
+    if state is not None:
+        split["reconciled"] = state
+    result = map_transaction(make_transaction_read_from_split(split))
+    assert result.tx is not None
+    assert result.tx.reconciled is state
+    assert result.tx.transaction_journal_id == 9181
