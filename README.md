@@ -10,7 +10,8 @@ for working with [Firefly III](https://www.firefly-iii.org/) transactions. It
 fetches transactions and categories, exposes simplified models, and updates a
 transaction's description, notes, tags, or category.
 
-Python 3.12 or newer is required.
+Python 3.12 or newer is required. CI tests Python 3.12–3.15, including package
+installation on each version and live Firefly III tests on 3.12 and 3.15.
 
 ## Install
 

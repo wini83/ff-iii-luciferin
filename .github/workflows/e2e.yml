@@ -7,18 +7,25 @@ on:
   workflow_dispatch:
 
 jobs:
-  firefly:
+  integration:
+    name: Firefly on Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.15"]
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
           pip install uv
-          uv sync --dev
+          uv sync --dev --locked
 
       - name: Start and seed local Firefly III demo
         run: bash scripts/demo/start.sh
@@ -40,3 +47,14 @@ jobs:
       - name: Firefly logs on failure
         if: failure()
         run: docker logs --tail 150 ff-iii-luciferin-demo || true
+
+  # Preserve the existing required check name across both E2E versions.
+  firefly:
+    needs: integration
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all E2E checks passed
+        env:
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+        run: test "$INTEGRATION_RESULT" = success
