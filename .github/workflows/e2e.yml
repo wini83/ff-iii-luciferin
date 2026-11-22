@@ -6,6 +6,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   integration:
     name: Firefly on Python ${{ matrix.python-version }}
@@ -50,6 +53,7 @@ jobs:
 
   # Preserve the existing required check name across both E2E versions.
   firefly:
+    permissions: {}
     needs: integration
     if: always()
     runs-on: ubuntu-latest
