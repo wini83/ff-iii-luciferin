@@ -266,11 +266,20 @@ class FireflyClient:
         return validate_response_single_tx(response, transaction_id)
 
     async def update_transaction(
-        self, transaction_id: int, update: TransactionUpdate
+        self,
+        transaction_id: int,
+        update: TransactionUpdate,
+        *,
+        apply_rules: bool = True,
+        fire_webhooks: bool = True,
     ) -> SimplifiedTx:
         """Update selected fields of a single-split transaction.
 
-        Firefly III rules and webhooks are enabled for this request. Supplying
+        Reads and validates the current single-split group before writing and
+        targets its journal ID. This is not an atomic compare-and-set; concurrent
+        changes and server-side rules may still affect the result.
+
+        Firefly III rules and webhooks are enabled by default. Supplying
         ``tags`` replaces the full tag list; use ``build_add_tag_payload`` to
         preserve existing tags while adding one. The returned response must
         still be mappable as a single-split transaction.
@@ -278,7 +287,9 @@ class FireflyClient:
         Args:
             transaction_id: Firefly III transaction group ID.
             update: Non-empty selection of description, notes, tags, and/or
-                category ID.
+                category ID and/or reconciliation state.
+            apply_rules: Run Firefly III rules after the update.
+            fire_webhooks: Trigger Firefly III webhooks after the update.
 
         Returns:
             The mapped transaction returned by Firefly III after the update.
@@ -298,11 +309,19 @@ class FireflyClient:
             split_update["tags"] = list(update.tags)
         if update.category_id is not None:
             split_update["category_id"] = str(update.category_id)
+        if update.reconciled is not None:
+            split_update["reconciled"] = update.reconciled
         if not split_update:
             raise ValueError("Transaction update payload is empty.")
+        current = await self.get_transaction(transaction_id)
+        if current.transaction_journal_id is None:
+            raise FireflyAPIError(
+                f"Transaction {transaction_id} has no valid journal ID; update aborted"
+            )
+        split_update["transaction_journal_id"] = str(current.transaction_journal_id)
         payload = {
-            "apply_rules": True,
-            "fire_webhooks": True,
+            "apply_rules": apply_rules,
+            "fire_webhooks": fire_webhooks,
             "transactions": [split_update],
         }
         response_put = await self._request("put", url, json=payload)

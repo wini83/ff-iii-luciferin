@@ -189,6 +189,8 @@ def map_transaction(tx: TransactionRead) -> TransactionMapResult:
         source_account=source_account,
         destination_account=destination_account,
         external_id=split.external_id,
+        reconciled=split.reconciled,
+        transaction_journal_id=parse_int(split.transaction_journal_id),
     )
 
     return TransactionMapResult(tx=simple_tx, reason=None)
