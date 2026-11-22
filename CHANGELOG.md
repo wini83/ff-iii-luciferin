@@ -1,3 +1,9 @@
+## v1.3.1 (2026-11-22)
+
+### Fix
+
+- **ci**: restrict permissions, pin actions and enforce zizmor audits (#97)
+
 ## v1.3.0 (2026-11-22)
 
 ### Feat
