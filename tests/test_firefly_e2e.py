@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from dataclasses import asdict
 from datetime import date
 from decimal import Decimal
 
@@ -95,6 +96,23 @@ def test_live_firefly_client() -> None:
             assert updated.description == "E2E updated"
             assert updated.notes == "verified"
             assert (await client.get_transaction(ids[0])).description == "E2E updated"
+
+            baseline = asdict(await client.get_transaction(ids[0]))
+            assert baseline.pop("reconciled") is False
+            assert baseline["transaction_journal_id"] is not None
+
+            for reconciled in (True, False):
+                updated = await client.update_transaction(
+                    ids[0],
+                    TransactionUpdate(reconciled=reconciled),
+                    apply_rules=False,
+                    fire_webhooks=False,
+                )
+                persisted = await client.get_transaction(ids[0])
+                for transaction in (updated, persisted):
+                    actual = asdict(transaction)
+                    assert actual.pop("reconciled") is reconciled
+                    assert actual == baseline
         finally:
             await client.close()
 
