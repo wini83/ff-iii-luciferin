@@ -6,8 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: update-firefly-openapi
@@ -15,12 +14,16 @@ concurrency:
 
 jobs:
   update:
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           ref: main
 
       - name: Find and download latest stable specification
@@ -33,13 +36,13 @@ jobs:
 
       - name: Set up Python
         if: steps.update.outputs.changed == 'true'
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
 
       - name: Install uv
         if: steps.update.outputs.changed == 'true'
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -53,7 +56,7 @@ jobs:
 
       - name: Create pull request
         if: steps.update.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8
         with:
           base: main
           branch: automation/update-firefly-openapi

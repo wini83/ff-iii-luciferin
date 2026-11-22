@@ -6,9 +6,7 @@ on:
       - main
 
 permissions:
-  contents: write
-  pull-requests: write
-  actions: write
+  contents: read
 
 concurrency:
   group: prepare-release-main
@@ -16,6 +14,8 @@ concurrency:
 
 jobs:
   finalize-release-tag:
+    permissions:
+      contents: write
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     outputs:
@@ -24,17 +24,18 @@ jobs:
       draft_ready: ${{ steps.state.outputs.draft_ready }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: true # zizmor: ignore[artipacked] -- This job pushes a release tag or branch and uploads no artifacts.
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
 
       - name: Sync locked dependencies
         run: uv sync --dev --locked
@@ -73,18 +74,21 @@ jobs:
           echo "draft_ready=true" >> "$GITHUB_OUTPUT"
 
   draft-release:
+    permissions:
+      contents: write
     needs: finalize-release-tag
     if: needs.finalize-release-tag.outputs.draft_ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout release tag
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           fetch-depth: 0
           ref: ${{ needs.finalize-release-tag.outputs.release_tag }}
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
 
@@ -110,22 +114,27 @@ jobs:
             --notes-file release-notes.md
 
   prepare-release:
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
     needs: finalize-release-tag
     if: needs.finalize-release-tag.outputs.ready == 'true' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: true # zizmor: ignore[artipacked] -- This job pushes a release tag or branch and uploads no artifacts.
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
 
       - name: Sync locked dependencies
         run: uv sync --dev --locked

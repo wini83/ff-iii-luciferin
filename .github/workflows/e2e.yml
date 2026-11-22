@@ -6,6 +6,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   integration:
     name: Firefly on Python ${{ matrix.python-version }}
@@ -18,8 +21,10 @@ jobs:
       UV_PYTHON: ${{ matrix.python-version }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -50,6 +55,7 @@ jobs:
 
   # Preserve the existing required check name across both E2E versions.
   firefly:
+    permissions: {}
     needs: integration
     if: always()
     runs-on: ubuntu-latest
