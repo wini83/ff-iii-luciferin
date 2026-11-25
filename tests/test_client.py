@@ -145,6 +145,36 @@ def test_fetch_accounts_paginates_and_maps_bank_details(
     ]
 
 
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_fetch_accounts_accepts_credit_card_liabilities(
+    mock_request: MagicMock,
+) -> None:
+    mock_request.return_value = MockResponse(
+        {
+            "data": [
+                _account_payload("1", type="liabilities", liability_type="creditcard"),
+                _account_payload("2", type="liabilities", liability_type="loan"),
+            ],
+            "meta": {"pagination": {"current_page": 1, "total_pages": 1}},
+        }
+    )
+
+    async def run() -> list[SimplifiedAccount]:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            return await client.fetch_accounts(account_type="liabilities")
+        finally:
+            await client.close()
+
+    assert asyncio.run(run()) == [
+        SimplifiedAccount(1, "Account 1", "liabilities", active=True),
+        SimplifiedAccount(2, "Account 2", "liabilities", active=True),
+    ]
+
+
 @pytest.mark.parametrize(
     ("account_type", "details"),
     [
@@ -218,6 +248,11 @@ def test_fetch_accounts_without_filters_uses_next_link(mock_request: MagicMock) 
     ("operation", "response", "error"),
     [
         ("list", {"data": []}, "Invalid response schema for account array"),
+        (
+            "list",
+            {"data": [_account_payload("1", account_number=123)], "meta": {}},
+            "Invalid response schema for account array",
+        ),
         ("create", {"data": None}, "Invalid response schema for account"),
         ("create", {"data": _account_payload("invalid")}, "Invalid account ID"),
     ],

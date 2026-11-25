@@ -1,16 +1,15 @@
+from dataclasses import dataclass
 from typing import Any
 
-from pydantic import ValidationError
+from pydantic import StrictBool, StrictStr, TypeAdapter, ValidationError
 
 from ff_iii_luciferin.api.errors import FireflyAPIError
 from ff_iii_luciferin.domain.models import SimplifiedAccount, SimplifiedTx, SystemInfo
 from ff_iii_luciferin.mappers.transaction_mapper import map_transaction
-from ff_iii_luciferin.openapi.openapi_client.models.account_array import AccountArray
-from ff_iii_luciferin.openapi.openapi_client.models.account_read import AccountRead
-from ff_iii_luciferin.openapi.openapi_client.models.account_single import AccountSingle
 from ff_iii_luciferin.openapi.openapi_client.models.category_array import (
     CategoryArray,
 )
+from ff_iii_luciferin.openapi.openapi_client.models.meta import Meta
 from ff_iii_luciferin.openapi.openapi_client.models.system_info import (
     SystemInfo as SystemInfoDTO,
 )
@@ -73,22 +72,56 @@ def validate_response_category_array(response: Any) -> CategoryArray:
         raise FireflyAPIError("Invalid response schema for category array") from exc
 
 
-def validate_response_account_array(response: Any) -> AccountArray:
+@dataclass(slots=True)
+class _AccountAttributes:
+    # Firefly can return values outside the generated schema for unused
+    # attributes, such as liability_type="creditcard".
+    name: StrictStr
+    type: StrictStr
+    iban: StrictStr | None = None
+    account_number: StrictStr | None = None
+    active: StrictBool | None = True
+
+
+@dataclass(slots=True)
+class _AccountRead:
+    type: StrictStr
+    id: StrictStr
+    attributes: _AccountAttributes
+
+
+@dataclass(slots=True)
+class _AccountArray:
+    data: list[_AccountRead]
+    meta: Meta
+
+
+@dataclass(slots=True)
+class _AccountSingle:
+    data: _AccountRead
+
+
+_ACCOUNT_ARRAY_ADAPTER = TypeAdapter(_AccountArray)
+_ACCOUNT_SINGLE_ADAPTER = TypeAdapter(_AccountSingle)
+
+
+def validate_response_account_array(response: Any) -> _AccountArray:
     try:
-        return AccountArray.model_validate(response)
+        dto: _AccountArray = _ACCOUNT_ARRAY_ADAPTER.validate_python(response)
+        return dto
     except ValidationError as exc:
         raise FireflyAPIError("Invalid response schema for account array") from exc
 
 
 def validate_response_single_account(response: Any) -> SimplifiedAccount:
     try:
-        dto = AccountSingle.model_validate(response)
+        dto: _AccountSingle = _ACCOUNT_SINGLE_ADAPTER.validate_python(response)
     except ValidationError as exc:
         raise FireflyAPIError("Invalid response schema for account") from exc
     return map_account(dto.data)
 
 
-def map_account(account: AccountRead) -> SimplifiedAccount:
+def map_account(account: _AccountRead) -> SimplifiedAccount:
     try:
         account_id = int(account.id)
     except ValueError as exc:
@@ -97,7 +130,7 @@ def map_account(account: AccountRead) -> SimplifiedAccount:
     return SimplifiedAccount(
         id=account_id,
         name=attributes.name,
-        type=attributes.type.value,
+        type=attributes.type,
         iban=attributes.iban or None,
         account_number=attributes.account_number or None,
         active=attributes.active,
