@@ -188,6 +188,83 @@ def test_create_account_returns_account_id(
     )
 
 
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_fetch_accounts_without_filters_uses_next_link(mock_request: MagicMock) -> None:
+    mock_request.side_effect = [
+        MockResponse(
+            {"data": [_account_payload("1")], "meta": {}, "links": {"next": "?page=2"}}
+        ),
+        MockResponse({"data": [_account_payload("2")], "meta": {}}),
+    ]
+
+    async def run() -> list[SimplifiedAccount]:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            return await client.fetch_accounts()
+        finally:
+            await client.close()
+
+    assert [account.id for account in asyncio.run(run())] == [1, 2]
+    assert mock_request.await_args_list == [
+        call("get", f"{BASE_URL}/api/v1/accounts", params={"limit": 50, "page": page})
+        for page in (1, 2)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("operation", "response", "error"),
+    [
+        ("list", {"data": []}, "Invalid response schema for account array"),
+        ("create", {"data": None}, "Invalid response schema for account"),
+        ("create", {"data": _account_payload("invalid")}, "Invalid account ID"),
+    ],
+)
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_account_endpoints_reject_invalid_responses(
+    mock_request: MagicMock, operation: str, response: dict[str, Any], error: str
+) -> None:
+    mock_request.return_value = MockResponse(response)
+
+    async def run() -> None:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            if operation == "list":
+                await client.fetch_accounts()
+            else:
+                await client.create_account(name="Counterparty", account_type="expense")
+        finally:
+            await client.close()
+
+    with pytest.raises(FireflyAPIError, match=error):
+        asyncio.run(run())
+
+
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_create_account_rejects_unsupported_type(mock_request: MagicMock) -> None:
+    async def run() -> None:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            await client.create_account(
+                name="Checking",
+                account_type="asset",  # type: ignore[arg-type]
+            )
+        finally:
+            await client.close()
+
+    with pytest.raises(ValueError, match="Account type must be expense or revenue"):
+        asyncio.run(run())
+    mock_request.assert_not_awaited()
+
+
 def _transaction_split_payload(
     description: str,
     *,
