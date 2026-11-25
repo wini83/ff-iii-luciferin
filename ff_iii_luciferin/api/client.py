@@ -286,8 +286,8 @@ class FireflyClient:
 
         Args:
             transaction_id: Firefly III transaction group ID.
-            update: Non-empty selection of description, notes, tags, and/or
-                category ID and/or reconciliation state.
+            update: Fields to change on the split, including account IDs.
+                Firefly III validates account types against the transaction type.
             apply_rules: Run Firefly III rules after the update.
             fire_webhooks: Trigger Firefly III webhooks after the update.
 
@@ -311,6 +311,10 @@ class FireflyClient:
             split_update["category_id"] = str(update.category_id)
         if update.reconciled is not None:
             split_update["reconciled"] = update.reconciled
+        if update.source_id is not None:
+            split_update["source_id"] = str(update.source_id)
+        if update.destination_id is not None:
+            split_update["destination_id"] = str(update.destination_id)
         if not split_update:
             raise ValueError("Transaction update payload is empty.")
         current = await self.get_transaction(transaction_id)

@@ -15,6 +15,8 @@ class TransactionUpdate:
         tags: Complete replacement list of tag names.
         category_id: Firefly III category ID to assign.
         reconciled: True to reconcile, False to undo, None to leave unchanged.
+        source_id: Firefly III account ID for the source of the transaction.
+        destination_id: Firefly III account ID for the destination.
     """
 
     description: str | None = None
@@ -22,3 +24,5 @@ class TransactionUpdate:
     tags: list[str] | None = None
     category_id: int | None = None
     reconciled: bool | None = None
+    source_id: int | None = None
+    destination_id: int | None = None

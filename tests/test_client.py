@@ -312,6 +312,8 @@ def test_get_transaction_invalid_dto_raises(mock_request: MagicMock) -> None:
         ),
         (TransactionUpdate(reconciled=True), {"reconciled": True}),
         (TransactionUpdate(reconciled=False), {"reconciled": False}),
+        (TransactionUpdate(source_id=17), {"source_id": "17"}),
+        (TransactionUpdate(destination_id=29), {"destination_id": "29"}),
     ],
 )
 @patch(

@@ -62,7 +62,9 @@ updated = await client.update_transaction(
 )
 ```
 
-`TransactionUpdate` accepts any non-empty combination of those four fields.
+`TransactionUpdate` accepts any non-empty combination of its fields.
+Use `source_id` or `destination_id` to assign an existing account to that side
+of a transaction. The account must be compatible with the transaction type.
 Passing `tags` replaces the transaction's tag list; it does not append one tag.
 To preserve existing tags, read the transaction and build the new list first:
 
