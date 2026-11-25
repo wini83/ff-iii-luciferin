@@ -1,3 +1,9 @@
+## v1.4.0 (2026-11-25)
+
+### Feat
+
+- **accounts**: list and create accounts and reassign transaction counterparties (#103)
+
 ## v1.3.1 (2026-11-22)
 
 ### Fix
