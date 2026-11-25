@@ -3,19 +3,27 @@
 import logging
 from collections.abc import AsyncIterator
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
 from ff_iii_luciferin.api.errors import FireflyAPIError
 from ff_iii_luciferin.api.transaction_update import TransactionUpdate
 from ff_iii_luciferin.api.validators import (
+    map_account,
     validate_response_about,
+    validate_response_account_array,
     validate_response_category_array,
+    validate_response_single_account,
     validate_response_single_tx,
     validate_response_transaction_array,
 )
-from ff_iii_luciferin.domain.models import SimplifiedCategory, SimplifiedTx, SystemInfo
+from ff_iii_luciferin.domain.models import (
+    SimplifiedAccount,
+    SimplifiedCategory,
+    SimplifiedTx,
+    SystemInfo,
+)
 from ff_iii_luciferin.mappers.category_mapper import map_category
 from ff_iii_luciferin.mappers.transaction_mapper import (
     TransactionMapResult,
@@ -246,6 +254,81 @@ class FireflyClient:
                 break
             page += 1
         return categories
+
+    async def fetch_accounts(
+        self,
+        *,
+        account_type: str | None = None,
+        active: bool | None = None,
+        limit: int = 50,
+    ) -> list[SimplifiedAccount]:
+        """Fetch all accounts matching the supplied filters across API pages.
+
+        Args:
+            account_type: Optional Firefly III type filter, such as `expense`.
+            active: Filter by active status. With `None`, return both.
+            limit: Requested number of accounts per page.
+
+        Returns:
+            Accounts in API order.
+
+        Raises:
+            FireflyAPIError: A request fails or the response is invalid.
+        """
+        url = f"{self.base_url}/api/v1/accounts"
+        params: dict[str, Any] = {"limit": limit, "page": 1}
+        if account_type is not None:
+            params["type"] = account_type
+        if active is not None:
+            params["active"] = active
+
+        accounts: list[SimplifiedAccount] = []
+        while True:
+            response = await self._request("get", url, params=params.copy())
+            data = validate_response_account_array(response)
+            accounts.extend(map_account(account) for account in data.data)
+            pagination = data.meta.pagination
+            if pagination and pagination.total_pages is not None:
+                if params["page"] >= pagination.total_pages:
+                    return accounts
+            elif not (response.get("links") or {}).get("next"):
+                return accounts
+            params["page"] += 1
+
+    async def create_account(
+        self,
+        *,
+        name: str,
+        account_type: Literal["expense", "revenue"],
+        iban: str | None = None,
+        account_number: str | None = None,
+    ) -> SimplifiedAccount:
+        """Create an expense or revenue account.
+
+        Args:
+            name: Account name.
+            account_type: Use `expense` for payees or `revenue` for payers.
+            iban: Optional international bank account number.
+            account_number: Optional separate account number.
+
+        Returns:
+            The created account, including its Firefly III ID.
+
+        Raises:
+            FireflyAPIError: The request fails or the response is invalid.
+            ValueError: The account type is unsupported.
+        """
+        if account_type not in {"expense", "revenue"}:
+            raise ValueError("Account type must be expense or revenue.")
+        payload = {"name": name, "type": account_type}
+        if iban is not None:
+            payload["iban"] = iban
+        if account_number is not None:
+            payload["account_number"] = account_number
+        response = await self._request(
+            "post", f"{self.base_url}/api/v1/accounts", json=payload
+        )
+        return validate_response_single_account(response)
 
     async def get_transaction(self, transaction_id: int) -> SimplifiedTx:
         """Fetch one single-split transaction by Firefly III group ID.

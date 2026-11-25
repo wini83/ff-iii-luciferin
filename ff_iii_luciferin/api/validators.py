@@ -3,8 +3,11 @@ from typing import Any
 from pydantic import ValidationError
 
 from ff_iii_luciferin.api.errors import FireflyAPIError
-from ff_iii_luciferin.domain.models import SimplifiedTx, SystemInfo
+from ff_iii_luciferin.domain.models import SimplifiedAccount, SimplifiedTx, SystemInfo
 from ff_iii_luciferin.mappers.transaction_mapper import map_transaction
+from ff_iii_luciferin.openapi.openapi_client.models.account_array import AccountArray
+from ff_iii_luciferin.openapi.openapi_client.models.account_read import AccountRead
+from ff_iii_luciferin.openapi.openapi_client.models.account_single import AccountSingle
 from ff_iii_luciferin.openapi.openapi_client.models.category_array import (
     CategoryArray,
 )
@@ -68,3 +71,34 @@ def validate_response_category_array(response: Any) -> CategoryArray:
         return dto
     except ValidationError as exc:
         raise FireflyAPIError("Invalid response schema for category array") from exc
+
+
+def validate_response_account_array(response: Any) -> AccountArray:
+    try:
+        return AccountArray.model_validate(response)
+    except ValidationError as exc:
+        raise FireflyAPIError("Invalid response schema for account array") from exc
+
+
+def validate_response_single_account(response: Any) -> SimplifiedAccount:
+    try:
+        dto = AccountSingle.model_validate(response)
+    except ValidationError as exc:
+        raise FireflyAPIError("Invalid response schema for account") from exc
+    return map_account(dto.data)
+
+
+def map_account(account: AccountRead) -> SimplifiedAccount:
+    try:
+        account_id = int(account.id)
+    except ValueError as exc:
+        raise FireflyAPIError("Invalid account ID in Firefly III response") from exc
+    attributes = account.attributes
+    return SimplifiedAccount(
+        id=account_id,
+        name=attributes.name,
+        type=attributes.type.value,
+        iban=attributes.iban or None,
+        account_number=attributes.account_number or None,
+        active=attributes.active,
+    )

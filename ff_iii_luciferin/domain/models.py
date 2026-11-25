@@ -128,6 +128,27 @@ class SimplifiedAccountRef:
     iban: str | None = None
 
 
+@dataclass(slots=True, frozen=True)
+class SimplifiedAccount:
+    """Account details returned by the Firefly III accounts endpoint.
+
+    Attributes:
+        id: Firefly III account ID.
+        name: Account name.
+        type: Short Firefly III account type, such as `asset` or `expense`.
+        iban: IBAN if supplied by Firefly III.
+        account_number: Separate account number if supplied by Firefly III.
+        active: Whether the account is active, if reported.
+    """
+
+    id: int
+    name: str
+    type: str
+    iban: str | None = None
+    account_number: str | None = None
+    active: bool | None = None
+
+
 @dataclass(eq=False)
 class SimplifiedTx(SimplifiedItem):
     """Mapped single-split Firefly III transaction.

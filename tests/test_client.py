@@ -5,13 +5,18 @@ from collections.abc import Iterable
 from datetime import date, datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import httpx
 import pytest
 
-from ff_iii_luciferin.api import FireflyAPIError, FireflyClient, SystemInfo
+from ff_iii_luciferin.api import (
+    FireflyAPIError,
+    FireflyClient,
+    SimplifiedAccount,
+    SystemInfo,
+)
 from ff_iii_luciferin.api.transaction_update import TransactionUpdate
 from ff_iii_luciferin.domain.models import (
     Currency,
@@ -78,6 +83,109 @@ def test_get_about_invalid_response(
 
     with pytest.raises(FireflyAPIError, match="system information"):
         asyncio.run(run())
+
+
+def _account_payload(account_id: str, **attributes: Any) -> dict[str, Any]:
+    return {
+        "type": "accounts",
+        "id": account_id,
+        "attributes": {
+            "name": f"Account {account_id}",
+            "type": "expense",
+            **attributes,
+        },
+    }
+
+
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_fetch_accounts_paginates_and_maps_bank_details(
+    mock_request: MagicMock,
+) -> None:
+    iban = "GB98MIDL07009312345678"
+    mock_request.side_effect = [
+        MockResponse(
+            {
+                "data": [_account_payload("1", iban=iban, active=False)],
+                "meta": {"pagination": {"current_page": 1, "total_pages": 2}},
+            }
+        ),
+        MockResponse(
+            {
+                "data": [_account_payload("2", account_number="00123", active=False)],
+                "meta": {"pagination": {"current_page": 2, "total_pages": 2}},
+            }
+        ),
+    ]
+
+    async def run() -> list[SimplifiedAccount]:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            return await client.fetch_accounts(
+                account_type="expense", active=False, limit=1
+            )
+        finally:
+            await client.close()
+
+    assert asyncio.run(run()) == [
+        SimplifiedAccount(1, "Account 1", "expense", iban=iban, active=False),
+        SimplifiedAccount(
+            2, "Account 2", "expense", account_number="00123", active=False
+        ),
+    ]
+    assert mock_request.await_args_list == [
+        call(
+            "get",
+            f"{BASE_URL}/api/v1/accounts",
+            params={"limit": 1, "page": page, "type": "expense", "active": False},
+        )
+        for page in (1, 2)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("account_type", "details"),
+    [
+        ("expense", {"iban": "GB98MIDL07009312345678", "account_number": "00123"}),
+        ("revenue", {}),
+    ],
+)
+@patch(
+    "ff_iii_luciferin.api.client.httpx.AsyncClient.request",
+    new_callable=AsyncMock,
+)
+def test_create_account_returns_account_id(
+    mock_request: MagicMock,
+    account_type: Literal["expense", "revenue"],
+    details: dict[str, str],
+) -> None:
+    mock_request.return_value = MockResponse(
+        {
+            "data": _account_payload(
+                "42", name="Counterparty", type=account_type, **details
+            )
+        }
+    )
+
+    async def run() -> SimplifiedAccount:
+        client = FireflyClient(BASE_URL, TOKEN)
+        try:
+            return await client.create_account(
+                name="Counterparty", account_type=account_type, **details
+            )
+        finally:
+            await client.close()
+
+    assert asyncio.run(run()) == SimplifiedAccount(
+        42, "Counterparty", account_type, active=True, **details
+    )
+    mock_request.assert_awaited_once_with(
+        "post",
+        f"{BASE_URL}/api/v1/accounts",
+        json={"name": "Counterparty", "type": account_type, **details},
+    )
 
 
 def _transaction_split_payload(
