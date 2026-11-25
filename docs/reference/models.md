@@ -12,6 +12,8 @@ single split; its inherited equality compares date and absolute amount only.
 
 ::: ff_iii_luciferin.domain.models.SimplifiedAccountRef
 
+::: ff_iii_luciferin.domain.models.SimplifiedAccount
+
 ::: ff_iii_luciferin.domain.models.Currency
 
 ::: ff_iii_luciferin.domain.models.FXContext

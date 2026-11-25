@@ -97,6 +97,28 @@ def test_live_firefly_client() -> None:
             assert updated.notes == "verified"
             assert (await client.get_transaction(ids[0])).description == "E2E updated"
 
+            payee = await client.create_account(
+                name="E2E replacement payee",
+                account_type="expense",
+                iban="GB98MIDL07009312345678",
+            )
+            assert payee.type == "expense"
+            assert payee.iban == "GB98MIDL07009312345678"
+            assert payee in await client.fetch_accounts(account_type="expense", limit=1)
+
+            expected = asdict(updated)
+            reassigned = await client.update_transaction(
+                ids[0],
+                TransactionUpdate(destination_id=payee.id),
+                apply_rules=False,
+                fire_webhooks=False,
+            )
+            assert reassigned.destination_account is not None
+            assert reassigned.destination_account.id == payee.id
+            expected["destination_account"] = asdict(reassigned.destination_account)
+            assert asdict(reassigned) == expected
+            assert asdict(await client.get_transaction(ids[0])) == expected
+
             baseline = asdict(await client.get_transaction(ids[0]))
             assert baseline.pop("reconciled") is False
             assert baseline["transaction_journal_id"] is not None

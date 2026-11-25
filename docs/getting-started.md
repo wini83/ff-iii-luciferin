@@ -44,6 +44,20 @@ for the mapping limits. `max_pages=1` limits the example
 to one API page; omit it to follow pagination until the last page. You can also
 pass `start_date` and `end_date` as Python `date` values.
 
+## Find or create a counterparty account
+
+```python
+accounts = await client.fetch_accounts(account_type="expense", active=True)
+
+# Create an expense account after deciding that a new payee is needed.
+payee = await client.create_account(name="Example shop", account_type="expense")
+```
+
+`fetch_accounts()` fetches every page and returns the account ID, name, type,
+IBAN, account number and active status where available. To create a payer,
+pass `account_type="revenue"`. Use the created account's `id` to update a
+transaction.
+
 ## Update an existing transaction
 
 The following code **changes** the transaction with ID `123` in Firefly III:
@@ -62,7 +76,9 @@ updated = await client.update_transaction(
 )
 ```
 
-`TransactionUpdate` accepts any non-empty combination of those four fields.
+`TransactionUpdate` accepts any non-empty combination of its fields.
+Use `source_id` or `destination_id` to assign an existing account to that side
+of a transaction. The account must be compatible with the transaction type.
 Passing `tags` replaces the transaction's tag list; it does not append one tag.
 To preserve existing tags, read the transaction and build the new list first:
 
